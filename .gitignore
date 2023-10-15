@@ -1,0 +1,8 @@
+# ignore any Finder droppings
+.DS_Store
+# don't archive Eclipse, VSCode, etc configs
+/.project
+/.buildpath
+/.vscode
+# skip the environment file (since it may have credentials in it)
+.env
