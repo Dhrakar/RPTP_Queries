@@ -115,11 +115,11 @@ FROM
   LEFT JOIN DSDMGR.CODE_ACADEMIC_ORGANIZATION camp ON 
     emp.academic_org_code = camp.academic_organization_code
 WHERE
-  -- this section dynamically gets the last 5 fiscal years of freeze data
+  -- this section dynamically gets the last 10 fiscal years of freeze data
   -- it uses the fall term and grabs anything between this year's fall and the
   -- 10 years-ago fall term
   emp.term_code BETWEEN  
-        (EXTRACT(year FROM CURRENT_DATE) - 5) || '03'
+        (EXTRACT(year FROM CURRENT_DATE) - 10) || '03'
     AND EXTRACT(year FROM CURRENT_DATE) || '03'
 ORDER BY
  emp.fiscal_year, "TERM"
