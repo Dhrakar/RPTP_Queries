@@ -120,3 +120,54 @@ emails AS (
       )
     )
 )
+
+-- Create a temp table of all current student holds
+--  - includes a list of all holds found (for further filtering)
+holds AS ( 
+  SELECT
+    a.sprhold_pidm             AS pidm,
+    count(a.sprhold_hldd_code) AS total,
+    listagg ( 
+      '[' || a.sprhold_hldd_code || '] "' 
+      || a.sprhold_reason || '" - ' 
+      || b.stvhldd_desc || ' ', ','
+    ) WITHIN GROUP (
+      ORDER BY a.sprhold_hldd_code
+    )                          AS codes
+  FROM
+    SATURN.SPRHOLD a
+    INNER JOIN SATURN.STVHLDD b ON 
+      a.sprhold_hldd_code = b.stvhldd_code
+  WHERE
+        a.sprhold_to_date >= SYSDATE
+    AND a.sprhold_hldd_code NOT IN ('AT', 'IX', 'AA')
+    AND b.stvhldd_reg_hold_ind = 'Y'
+  GROUP BY
+    a.sprhold_pidm
+)
+
+-- Creates a temp table of all of the current student advisors
+--  - only includes the primary advisor for each student
+advisors AS ( 
+  SELECT
+    sgradvr_pidm                  AS pidm,
+    b.spriden_last_name  
+     || ', ' 
+     || b.spriden_first_name 
+     || ' ' 
+     || substr(b.spriden_mi,0,1)  AS advisor
+  FROM 
+    SATURN.SGRADVR a
+    INNER JOIN SATURN.SPRIDEN b ON (
+          b.spriden_pidm = a.sgradvr_advr_pidm
+      AND b.spriden_change_ind IS NULL
+    )
+  WHERE
+    a.sgradvr_prim_ind = 'Y'
+    AND a.sgradvr_term_code_eff = (
+      SELECT max( i.sgradvr_term_code_eff )
+      FROM saturn.sgradvr i
+      WHERE i.sgradvr_pidm = a.sgradvr_pidm
+        AND i.sgradvr_prim_ind = 'Y'
+   )
+)
