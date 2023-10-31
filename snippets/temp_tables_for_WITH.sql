@@ -6,6 +6,18 @@
 -- testing. Note that some of these temp tables require a variable to be set.
 -- =============================================================================
 
+-- Create a temp table with the current term code
+--  - only includes terms ....01, ....02 and ....03
+terms AS ( 
+  SELECT 
+    max(a.stvterm_code) AS curr_term
+  FROM 
+    SATURN.STVTERM a
+  WHERE 
+        substr(a.stvterm_code,6,1) IN ('1','2','3') 
+    AND a.stvterm_start_date <= SYSDATE
+)
+
 -- Create a temporary table  of students that are 
 -- registered for the term selected.
 --  - only includes UAF students
@@ -80,6 +92,31 @@ records AS (
         FROM SATURN.SGBSTDN i
         WHERE i.sgbstdn_pidm = a.sgbstdn_pidm
         AND i.sgbstdn_term_code_eff <= :the_term
+      )
+    )
+)
+
+-- Create a temp table of the most current email addresses for each person
+--  - only includes 'Active' addresses
+--  - includes the type of email address (from GTVEMAL)
+--  - includes Preferred flag
+emails AS (
+  SELECT 
+    a.goremal_pidm          AS pidm,
+    a.goremal_email_address AS email_address,
+    a.goremal_emal_code     AS address_type,
+    a.goremal_preferred_ind AS is_preferred
+  FROM
+    GENERAL.GOREMAL a
+  WHERE
+        a.goremal_status_ind = 'A'
+    AND a.goremal_activity_date = (
+      SELECT MAX (b.goremal_activity_date)
+      FROM GENERAL.GOREMAL b
+      WHERE (
+            b.goremal_pidm = a.goremal_pidm
+        AND b.goremal_status_ind = 'A'
+        AND b.goremal_emal_code = a.goremal_emal_code
       )
     )
 )
