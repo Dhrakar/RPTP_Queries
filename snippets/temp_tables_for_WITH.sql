@@ -81,7 +81,7 @@ records AS (
     )
   WHERE
     -- to get all UAF students, change to LIKE '%F'
-    a.sgbstdn_levl_code LIKE 'UF'
+        a.sgbstdn_levl_code LIKE 'UF'
     -- comment out to include exchange students
     AND a.sgbstdn_majr_code_1 <> 'EXCH'
     -- uncomment to limit to just specific home campuses
@@ -96,6 +96,23 @@ records AS (
     )
 )
 
+-- Create a temporary table of students who show as enrolled based on the SFBETRM table.
+--  - Only includes recored with status (ESTS) codes:
+--      EL ( Eligible for Registration)
+--      SR ( Stop Registration)
+--  - Only includes records with the AR indicator flag set to 'Y'
+enrolled AS (
+  SELECT
+    a.sfbetrm_pidm            AS pidm,
+    a.sfbetrm_term_code       AS term_code
+  FROM
+    SATURN.SFBETRM a
+  WHERE
+    -- limit to valid ests codes for 'enrolled' status
+        a.sfbetrm_ests_code IN ('EL', 'SR')
+    AND a.sfbetrm_ar_ind = 'Y'
+)
+  
 -- Create a temp table of the most current email addresses for each person
 --  - only includes 'Active' addresses
 --  - includes the type of email address (from GTVEMAL)
