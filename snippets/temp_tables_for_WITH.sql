@@ -118,7 +118,7 @@ enrolled AS (
 -- Create a temp table of the most current email addresses for each person
 --  - only includes 'Active' addresses
 --  - includes the type of email address (from GTVEMAL)
---  - includes Preferred flag
+--  - includes Preferred flag (uncomment filter for preferred if you just want those)
 emails AS (
   SELECT 
     a.goremal_pidm          AS pidm,
@@ -129,12 +129,14 @@ emails AS (
     GENERAL.GOREMAL a
   WHERE
         a.goremal_status_ind = 'A'
+ -- AND a.goremal_preferred_ind = 'Y' -- uncomment for preferred email 
     AND a.goremal_activity_date = (
       SELECT MAX (b.goremal_activity_date)
       FROM GENERAL.GOREMAL b
       WHERE (
             b.goremal_pidm = a.goremal_pidm
         AND b.goremal_status_ind = 'A'
+     -- AND a.goremal_preferred_ind = 'Y' -- uncomment for preferred email 
         AND b.goremal_emal_code = a.goremal_emal_code
       )
     )
