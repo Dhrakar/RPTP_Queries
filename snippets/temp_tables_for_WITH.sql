@@ -101,6 +101,7 @@ records AS (
 --      EL ( Eligible for Registration)
 --      SR ( Stop Registration)
 --  - Only includes records with the AR indicator flag set to 'Y'
+-- Only includes students enrolled in the term selected
 enrolled AS (
   SELECT
     a.sfbetrm_pidm            AS pidm,
@@ -111,6 +112,7 @@ enrolled AS (
     -- limit to valid ests codes for 'enrolled' status
         a.sfbetrm_ests_code IN ('EL', 'SR')
     AND a.sfbetrm_ar_ind = 'Y'
+    AND a.sfbetrm_term_code = :the_term
 )
   
 -- Create a temp table of the most current email addresses for each person
