@@ -43,16 +43,16 @@ SELECT
     FROM HSI.DISKGROUP 
     WHERE diskgroupnum = dgm.destdiskgroupnum 
   )                    AS "Destination",
-  substr( 
-        dgm.description,
-        instr(dgm.description,'f',1, 1) + 4,
-        8
-      )                AS "Start Date",
-  substr( 
-        dgm.description,
-        instr(dgm.description,'t',1, 2) + 4,
-        8
-      )                AS "End Date",
+  CASE
+    -- check to see if a start date was used for this job
+    WHEN instr( dgm.description, chr(34) || 'dates'||chr(34)||':[]',1, 1) > 0 THEN ' --- '
+    ELSE substr( dgm.description, instr(dgm.description,chr(34) || 'f'||chr(34),1, 1) + 5, 8)
+  END                  AS "Start Date",
+  CASE
+    -- check to see if an end date was used for this job
+    WHEN instr( dgm.description, chr(34) || 'dates'||chr(34)||':[]',1, 1) > 0 THEN ' --- '
+    ELSE substr( dgm.description, instr(dgm.description,chr(34) || 't'||chr(34),1, 1) + 5, 8)
+  END                  AS "End Date",
   queued.count         AS "Files Queued"
 FROM
   HSI.DGMIGRATORJOB dgm
