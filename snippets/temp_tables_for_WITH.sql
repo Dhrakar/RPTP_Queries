@@ -62,28 +62,43 @@ records AS (
     a.sgbstdn_term_code_eff AS term_eff,
     a.sgbstdn_camp_code     AS campus,
     a.sgbstdn_pidm          AS pidm,
-    a.sgbstdn_degc_code_1   AS degree_code,
-    b.stvdegc_desc          AS degree_desc,
-    a.sgbstdn_majr_code_1   AS major_code,
-    c.stvmajr_desc          AS major_desc,
-    a.sgbstdn_coll_code_1   AS college_code,
-    d.stvcoll_desc          AS college_desc
+    a.sgbstdn_degc_code_1   AS prim_degree_code,
+    b.stvdegc_desc          AS prim_degree_desc,
+    a.sgbstdn_majr_code_1   AS prim_major_code,
+    c.stvmajr_desc          AS prim_major_desc,
+    a.sgbstdn_degc_code_2   AS sec_degree_code,
+    d.stvdegc_desc          AS sec_degree_desc,
+    a.sgbstdn_majr_code_2   AS sec_major_code,
+    e.stvmajr_desc          AS sec_major_desc,
+    a.sgbstdn_coll_code_1   AS prim_college_code,
+    f.stvcoll_desc          AS prim_college_desc,
+    a.sgbstdn_coll_code_2   AS sec_college_code,
+    g.stvcoll_desc          AS sec_college_desc
   FROM 
     SATURN.SGBSTDN a
     INNER JOIN SATURN.STVDEGC b ON (
       b.stvdegc_code = a.sgbstdn_degc_code_1
     )
     INNER JOIN SATURN.STVMAJR c ON (
-      c.stvmajr_code = a.sgbstdn_majr_code_1
+      c.stvmajr_code = a.sgbstdn_majr_code_1    
     )
-    INNER JOIN SATURN.STVCOLL d ON (
-      d.stvcoll_code = a.sgbstdn_coll_code_1
+    INNER JOIN SATURN.STVDEGC d ON (
+      d.stvdegc_code = a.sgbstdn_degc_code_2
+    )
+    INNER JOIN SATURN.STVMAJR e ON (
+      e.stvmajr_code = a.sgbstdn_majr_code_2
+    )
+    INNER JOIN SATURN.STVCOLL f ON (
+      f.stvcoll_code = a.sgbstdn_coll_code_1
+    )
+    INNER JOIN SATURN.STVCOLL g ON (
+      g.stvcoll_code = a.sgbstdn_coll_code_2
     )
   WHERE
     -- to get all UAF students, change to LIKE '%F'
         a.sgbstdn_levl_code LIKE 'UF'
-    -- comment out to include exchange students
-    AND a.sgbstdn_majr_code_1 <> 'EXCH'
+    -- uncomment to exclude exchange students
+    -- AND a.sgbstdn_majr_code_1 <> 'EXCH'
     -- uncomment to limit to just specific home campuses
     -- AND a.sgbstdn_camp_code IN ('X', 'F')
     AND (
