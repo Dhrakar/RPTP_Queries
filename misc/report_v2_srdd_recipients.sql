@@ -28,7 +28,29 @@ WITH
     JOIN POSNCTL.NBBPOSN rec ON (
       pos.nbrbjob_posn = rec.nbbposn_posn
       -- just get the pos that are eligible for longevity recognition
-      AND rec.nbbposn_ecls_code IN ('NR','NX','XR','XX','EX')
+      AND rec.nbbposn_ecls_code IN (
+--      'A9', --'Faculty'
+--      'AR', --'Faculty'
+      'EX', --'Officers/Sr. Administrators'
+--      'F9', --'Faculty'
+--      'FN', --'Faculty'
+--      'FR', --'Officers/Sr. Administrators'
+--      'FT', --'Adjunct Faculty'
+--      'FW', --'Adjunct Faculty'
+      'CR', --'Staff'
+--      'CT', --'Staff'
+      'NR', --'Staff'
+--      'NT', --'Staff'
+      'NX', --'Staff'
+      'XR', --'Staff'
+--      'XT', --'Staff'
+      'XX', --'Staff'
+      'GN', --'Student'
+      'GT', --'Student'
+      'SN', --'Student'
+      'ST', --'Student'
+    '00' -- dummy value to keep from futzing with the trailing comma when commenting/uncommenting
+  )
     )
   WHERE
     -- only include the Primary positions
