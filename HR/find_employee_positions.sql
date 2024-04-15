@@ -7,6 +7,8 @@
 --  @param :username -- UA Username
 --  @param :pidm     -- unique Banner numeric ID
 --  @param :uaemail  -- UA email address (eg; username@alaska.edu)
+--  @param :uatkl    -- All employees in that time keeping location
+--  @param :uadlevel -- All the employees in a particular department
 --
 --  Included RPTP tables
 --   SPRIDEN, GOBTPAC, NBRBJOB, NBRJOBS, NER2SUP, NBRJLBD, FTVFUND, 
@@ -26,6 +28,8 @@ SELECT DISTINCT
                               AS "Full Name",
   usr.gobtpac_external_user   AS "UA Username",
   ua.pebempl_empl_status      AS "UA Status",
+  ua.pebempl_first_hire_date  AS "First Hired",
+  ua.pebempl_adj_service_date AS "Adj Service Start",
   DECODE (
     -- show contract type or '-' if terminated 
     job.nbrbjob_contract_type,
@@ -111,7 +115,11 @@ WHERE
  OR emp.spriden_pidm = trim(:pidm)
  OR usr.gobtpac_external_user = lower(trim(:uaname)) 
  OR usr.gobtpac_external_user = lower( substr(:uaemail, 1, instr(:uaemail, '@') - 1 ) )
+ OR ua.pebempl_orgn_code_dist = upper(:uatkl)
+ OR ua.pebempl_orgn_code_home = upper(:uadlevel)
   )
+  -- only include currently active employees
+  AND ua.pebempl_empl_status != 'T'
   -- only include the current person records for the employee
   AND emp.spriden_change_ind IS NULL
   -- limit to the most current position (if exists)
