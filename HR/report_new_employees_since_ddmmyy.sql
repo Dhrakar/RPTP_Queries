@@ -88,8 +88,14 @@ WHERE
   emp.nbrbjob_contract_type = 'P'
   -- comment out to do all of UA
   AND org.level1 = 'UAFTOT'
-  -- Only count folks hired inthe last 4 months
-  AND emp.pebempl_current_hire_date BETWEEN SYSDATE - 120 AND SYSDATE 
+  -- Only count folks hired recently
+  AND emp.pebempl_current_hire_date BETWEEN
+    --  uncomment to limit to the last 3 months
+    -- SYSDATE - 90
+    -- OR uncomment to use a specific start date
+      to_date('03/20/2024', 'mm/dd/yyyy')
+    -- 
+    AND SYSDATE 
   -- do not include student employees or the old Adjunct categories
   AND emp.nbrjobs_ecls_code IN (
 --    'A9', --'Faculty',
