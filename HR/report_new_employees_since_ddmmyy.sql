@@ -20,12 +20,30 @@ SELECT
   usr.gobtpac_external_user 
     || '@alaska.edu'             AS "UA Email",
   pe.goremal_email_address       AS "Preferred Email",
-  adr.spraddr_city               AS "Mailing Address City", 
+  adr.spraddr_city               AS "Mailing Address City", adr.spraddr_zip,
   CASE
-    WHEN UPPER(adr.spraddr_city) LIKE '%FAIRBANKS%' THEN 'Local'
-    WHEN UPPER(adr.spraddr_city) LIKE '%NORTH POLE%' THEN 'Local'
-    WHEN UPPER(adr.spraddr_city) LIKE '%SALCHA%' THEN 'Local'
-    WHEN UPPER(adr.spraddr_city) LIKE '%WAINWRIGHT%' THEN 'Local'
+    WHEN substr(adr.spraddr_zip,1,5) IN (
+      '99702',  -- Eielson AFB
+      '99703',  -- Ft Wainwright
+      -- '99704', -- Clear 
+      '99705',  -- North Pole
+      '99706',  -- Fairbanks PO
+      '99707',  -- Fairbanks PO
+      '99708',  -- Fairbanks PO
+      '99709',  -- Fairbanks 
+      '99710',  -- Fairbanks PO
+      '99711',  -- Fairbanks PO
+      '99712',  -- Two Rivers, Fox
+      -- '99713',  -- ?
+      '99714',  -- Salcha
+      -- '99715',  -- ?
+      '99716',  -- Fairbanks PO (Two Rivers)
+      '99725',  -- Fairbanks PO (Ester)
+      '99775',  -- UAF
+      -- '99790',  -- Interior Alaska (Ft Greely, etc)
+      -- General Fairbanks
+      '99701'
+    ) THEN 'Local'
     ELSE 'Remote'
   END                            AS "Location",
   DSDUAF.f_decode$orgn_campus(
@@ -50,13 +68,13 @@ SELECT
   emp.nbrbjob_end_date           AS "Position End Date"
 FROM 
   REPORTS.N_ACTIVE_JOBS emp
-  JOIN SPBPERS bio ON 
+  INNER JOIN SATURN.SPBPERS bio ON 
     emp.spriden_pidm = bio.spbpers_pidm
-  JOIN ftvorgn_levels org ON 
+  INNER JOIN REPORTS.FTVORGN_LEVELS org ON 
     emp.pebempl_orgn_code_home = org.orgn_code
-  JOIN GENERAL.GOBTPAC usr ON 
+  INNER JOIN GENERAL.GOBTPAC usr ON 
     usr.gobtpac_pidm = emp.spriden_pidm
-  JOIN SATURN.SPRADDR adr ON (
+  INNER JOIN SATURN.SPRADDR adr ON (
     adr.spraddr_pidm = emp.spriden_pidm
     AND adr.spraddr_atyp_code = 'MA'
   )
@@ -70,11 +88,9 @@ WHERE
   emp.nbrbjob_contract_type = 'P'
   -- comment out to do all of UA
   AND org.level1 = 'UAFTOT'
-  -- TODO:
-  --   may want to adapt this to only include those hired since the last orientation?
-  --   Or maybe in the last 4 months? 
-  AND emp.pebempl_current_hire_date BETWEEN to_date('08/28/2023', 'MM/DD/YYYY') 
-                                        AND SYSDATE 
+  -- Only count folks hired inthe last 4 months
+  AND emp.pebempl_current_hire_date BETWEEN SYSDATE - 120 AND SYSDATE 
+  -- do not include student employees or the old Adjunct categories
   AND emp.nbrjobs_ecls_code IN (
 --    'A9', --'Faculty',
 --    'AR', --'Faculty',
@@ -96,7 +112,7 @@ WHERE
 --    'GT', --'Student',
 --    'SN', --'Student',
 --    'ST' --'Student',
-    '00' -- dummy value to keep from futzing with the trailing comma when commenting/uncommenting
+    '00' -- dummy value to keep from futzing with the trailing ','
   )
   AND (
     -- Get the most recent mailing address (if exists)
