@@ -116,6 +116,60 @@ records AS (
     )
 )
 
+-- Create a temporary table of the Applications and applicataion decisions for a term
+-- - Only includes records with the following
+--    Undergraduate UAF
+--    Bachelor level degree apps
+--    Only the term selected
+--  does include all of the descision codes ( STVAPDC )
+apps AS (
+  SELECT
+    a.saradap_pidm            AS pidm,
+    a.saradap_term_code_entry AS term_code,
+    a.saradap_styp_code       AS styp_code,
+    a.saradap_appl_date       AS app_date,
+    a.saradap_appl_no         AS app_no,
+    a.saradap_majr_code_1     AS major_code,
+    a.saradap_coll_code_1     AS coll_code,
+    b.sarappd_seq_no          AS seq_no,
+    b.sarappd_apdc_code       AS apdc_code
+  FROM
+    SATURN.SARADAP a
+    JOIN SATURN.SARAPPD b ON (
+          b.sarappd_pidm = a.saradap_pidm
+      AND b.sarappd_term_code_entry = a.saradap_term_code_entry
+      AND b.sarappd_appl_no = a.saradap_appl_no
+      AND b.sarappd_seq_no = (
+        SELECT MAX (b2.sarappd_seq_no)
+        FROM SATURN.SARAPPD b2
+        WHERE b2.sarappd_pidm = b.sarappd_pidm
+          AND b2.sarappd_term_code_entry = b.sarappd_term_code_entry
+          AND b2.sarappd_appl_no = b.sarappd_appl_no
+          AND b2.sarappd_appl_no = (
+           SELECT MAX(b3.sarappd_appl_no)
+           FROM SATURN.SARAPPD b3
+           WHERE b3.sarappd_pidm = b2.sarappd_pidm
+             AND b3.sarappd_term_code_entry = b2.sarappd_term_code_entry
+          )
+      )
+    )
+  WHERE
+    a.saradap_term_code_entry = :the_term
+    -- only include undergrad UAF
+    AND a.saradap_levl_code = 'UF'
+    -- only first time or transfer
+    AND a.saradap_styp_code in ('F', 'T')
+    -- only bachelor-type degrees
+    AND a.saradap_degc_code_1 in ( 
+      SELECT a1.stvdegc_code
+      FROM SATURN.STVDEGC a1
+        JOIN SATURN.STVDLEV a2 ON (
+          a2.stvdlev_code = a1.stvdegc_dlev_code
+      AND a2.stvdlev_code in ('02', 'B')
+      )
+    )
+)
+  
 -- Create a temporary table of students who show as enrolled based on the SFBETRM table.
 --  - Only includes recored with status (ESTS) codes:
 --      EL ( Eligible for Registration)
