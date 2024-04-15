@@ -18,7 +18,7 @@ SELECT
          emp.spriden_mi,1,1
        )                         AS "Full Name",
   usr.gobtpac_external_user 
-    || '@alaska.edu'               AS "UA Email",
+    || '@alaska.edu'             AS "UA Email",
   pe.goremal_email_address       AS "Preferred Email",
   adr.spraddr_city               AS "Mailing Address City", 
   CASE
@@ -49,7 +49,7 @@ SELECT
   emp.nbrbjob_begin_date         AS "Position Start Date",
   emp.nbrbjob_end_date           AS "Position End Date"
 FROM 
-  REPORTS N_ACTIVE_JOBS emp
+  REPORTS.N_ACTIVE_JOBS emp
   JOIN SPBPERS bio ON 
     emp.spriden_pidm = bio.spbpers_pidm
   JOIN ftvorgn_levels org ON 
