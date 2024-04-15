@@ -25,7 +25,30 @@ SELECT DISTINCT
        )
     || ' ' 
     || substr ( emp.spriden_mi,1,1)                      
-                              AS "Full Name",
+                              AS "Full Name",  CASE
+    -- Use the preferred Gender if available, otherwise sex
+    WHEN bio.spbpers_gndr_code IS NOT NULL THEN
+      DECODE (
+        bio.spbpers_gndr_code,
+        'A',	 'Agender',
+        'DNA', 'Does Not Apply',
+        'F',	 'Female',
+        'GQ',	 'Genderqueer',
+        'M',	 'Male',
+        'N',	 'Non-Binary',
+        'TF',	 'Transgender Female',
+        'TM',	 'Transgender Male',
+        bio.spbpers_gndr_code
+      )
+    ELSE 
+      DECODE (
+        bio.spbpers_sex,
+        'F',	'Female',
+        'M',	'Male',
+        'N',	'Not Disclosed',
+        bio.spbpers_sex
+      )
+    END                       AS "Gender",
   usr.gobtpac_external_user   AS "UA Username",
   ua.pebempl_empl_status      AS "UA Status",
   ua.pebempl_first_hire_date  AS "First Hired",
