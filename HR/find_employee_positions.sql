@@ -16,7 +16,9 @@
 -- =============================================================================
 SELECT DISTINCT
   emp.spriden_id              AS "UA ID",
+  usr.gobtpac_external_user   AS "UA Username",
   emp.spriden_pidm            AS "Banner #",
+  ban.gobeacc_username        AS "Banner ID",
   emp.spriden_last_name
     || ', '
     || coalesce (
@@ -25,7 +27,8 @@ SELECT DISTINCT
        )
     || ' ' 
     || substr ( emp.spriden_mi,1,1)                      
-                              AS "Full Name",  CASE
+                              AS "Full Name",
+  CASE
     -- Use the preferred Gender if available, otherwise sex
     WHEN bio.spbpers_gndr_code IS NOT NULL THEN
       DECODE (
@@ -49,7 +52,6 @@ SELECT DISTINCT
         bio.spbpers_sex
       )
     END                       AS "Gender",
-  usr.gobtpac_external_user   AS "UA Username",
   ua.pebempl_empl_status      AS "UA Status",
   ua.pebempl_first_hire_date  AS "First Hired",
   ua.pebempl_adj_service_date AS "Adj Service Start",
@@ -92,9 +94,10 @@ SELECT DISTINCT
     || '@alaska.edu'          AS "Supervisor Email"
 FROM
   SATURN.SPRIDEN emp
-  JOIN SATURN.SPBPERS bio ON emp.spriden_pidm = bio.spbpers_pidm
-  JOIN PAYROLL.PEBEMPL ua ON emp.spriden_pidm = ua.pebempl_pidm
-  JOIN GENERAL.GOBTPAC usr ON emp.spriden_pidm = usr.gobtpac_pidm
+  INNER JOIN SATURN.SPBPERS bio ON emp.spriden_pidm = bio.spbpers_pidm
+  INNER JOIN PAYROLL.PEBEMPL ua ON emp.spriden_pidm = ua.pebempl_pidm
+  INNER JOIN GENERAL.GOBTPAC usr ON emp.spriden_pidm = usr.gobtpac_pidm
+  LEFT JOIN GENERAL.GOBEACC ban ON emp.spriden_pidm = ban.gobeacc_pidm
   LEFT JOIN POSNCTL.NBRBJOB job ON (
         emp.spriden_pidm = job.nbrbjob_pidm
     -- uncomment to limit to just current positions
