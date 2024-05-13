@@ -15,6 +15,9 @@
 --   FTVORGN_LEVELS
 -- =============================================================================
 SELECT DISTINCT
+  org.title2                  AS "Cabinet",
+  org.title3                  AS "Unit",
+  org.title                   AS "Department",
   emp.spriden_id              AS "UA ID",
   usr.gobtpac_external_user   AS "UA Username",
   emp.spriden_pidm            AS "Banner #",
@@ -130,6 +133,9 @@ FROM
         job.nbrbjob_pidm = dist.nbrjlbd_pidm
     AND job.nbrbjob_posn = dist.nbrjlbd_posn
     AND job.nbrbjob_suff = dist.nbrjlbd_suff
+  )
+  LEFT JOIN REPORTS.FTVORGN_LEVELS org ON (
+    org.orgn_code = ua.pebempl_orgn_code_home
   )
   LEFT JOIN REPORTS.FTVORGN_LEVELS jorg ON (
     jorg.level8 = dist.nbrjlbd_orgn_code
