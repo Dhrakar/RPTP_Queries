@@ -1,6 +1,29 @@
 -- ===========================================================
 --  Employee Engagement Survey Data
 -- ===========================================================
+WITH
+  supervisor AS (
+    SELECT DISTINCT
+    a.ner2sup_sup_pidm AS pidm
+  FROM
+    POSNCTL.NER2SUP a
+    JOIN REPORTS.N_ACTIVE_JOBS b ON (
+          b.spriden_pidm = a.ner2sup_sup_pidm
+      AND b.nbrbjob_contract_type ='P'
+    )
+  WHERE
+    a.ner2sup_sup_ind = 'Y'
+    AND a.ner2sup_effective_date = (
+      SELECT MAX (a2.ner2sup_effective_date)
+      FROM POSNCTL.NER2SUP a2
+      WHERE (
+            a.ner2sup_pidm = a2.ner2sup_pidm
+        AND a.ner2sup_posn = a2.ner2sup_posn
+        AND a.ner2sup_suff = a2.ner2sup_suff
+        AND a2.ner2sup_sup_ind = 'Y'
+      )
+    )
+  )
 SELECT
   emp.spriden_id               AS "UA ID",
   emp.spriden_last_name
@@ -10,6 +33,7 @@ SELECT
   || substr(emp.spriden_mi,1,1) AS "Full Name",
   addr.gobtpac_external_user 
     || '@alaska.edu'           AS "UA Email",
+  NVL2( supervisor.pidm, 'Y', 'N') AS "Supervisor?",
   (
     SELECT stvethn_desc
     FROM SATURN.STVETHN
@@ -25,24 +49,19 @@ SELECT
   CASE
     -- Use the preferred Gender if available, otherwise sex
     WHEN bio.spbpers_gndr_code IS NOT NULL THEN
-      DECODE (
-        bio.spbpers_gndr_code,
-        'A',	'Agender',
-        'DNA', 'Does Not Apply',
-        'F',	'Female',
-        'GQ',	'Genderqueer',
-        'M',	'Male',
-        'N',	'Non-Binary',
-        'TF',	'Transgender Female',
-        'TM',	'Transgender Male',
-        bio.spbpers_gndr_code
+      ( -- use the general validation table for genders
+        SELECT gtvgndr_gndr_desc
+        FROM GENERAL.GTVGNDR
+        WHERE gtvgndr_gndr_code = bio.spbpers_gndr_code
+          AND gtvgndr_active_ind = 'Y'
       )
     ELSE 
-      DECODE (
+      DECODE ( -- decode the sax code
         bio.spbpers_sex,
         'F',	'Female',
         'M',	'Male',
         'N',	'Not Disclosed',
+        'X',    'X or Other Sex',
         bio.spbpers_sex
       )
     END                        AS "Gender",
@@ -56,8 +75,16 @@ SELECT
     FROM SATURN.STVMRTL
     WHERE stvmrtl_code = bio.spbpers_mrtl_code
   )                            AS "Marital Status",
-  dsduaf.f_decode$orgn_campus(
-    org.level1
+  DECODE (
+    org.level1,
+    'UAATOT', 'UAA',
+    'UAFTOT', 'UAF',
+    'UASTOT', 'UAS',
+    'SWTOT' , 'SO',
+    'EETOT',  'EE',
+    'FDNTOT', 'FDN',
+    'UATKL',  'TKL',
+    'ZZZ'
   )                            AS "Campus",
   org.title2                   AS "Cabinet",
   org.title3                   AS "Unit",
@@ -83,24 +110,31 @@ SELECT
    || substr(boss.spriden_mi,1,1) AS "Supervisor Name"
 FROM
   REPORTS.N_ACTIVE_JOBS emp
+    -- Add on biographic information
   JOIN SATURN.SPBPERS bio ON (
     bio.spbpers_pidm = emp.spriden_pidm
   )
-  JOIN GENERAL.GOBTPAC addr  ON (
     -- grab the UA username
+  JOIN GENERAL.GOBTPAC addr  ON (
 	    emp.pebempl_pidm = addr.gobtpac_pidm
   )
+    -- get the home dLevel org hierarchy
   JOIN REPORTS.FTVORGN_LEVELS org ON (
     emp.pebempl_orgn_code_home = org.orgn_code
   )
+    -- check to see if this person is a supervisor
+  LEFT JOIN supervisor ON (
+    supervisor.pidm = emp.spriden_pidm
+  )
+    -- look to see who this person's supervisor is
   LEFT JOIN POSNCTL.NER2SUP sup   ON (
-     -- join to the supervisor table
         emp.nbrbjob_pidm = sup.ner2sup_pidm
     AND emp.nbrbjob_posn = sup.ner2sup_posn
     AND emp.nbrbjob_suff = sup.ner2sup_suff
      -- just get the management supervisor
     AND sup.ner2sup_sup_ind = 'Y'
   )
+    -- get the identity info for this supervisor
   LEFT JOIN SATURN.SPRIDEN boss ON (
     sup.ner2sup_sup_pidm = boss.spriden_pidm
     AND boss.spriden_change_ind IS NULL
