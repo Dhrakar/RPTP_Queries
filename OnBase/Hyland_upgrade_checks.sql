@@ -291,7 +291,7 @@ FROM
   hsi.physicalplatter pl
   JOIN hsi.diskgroup dg ON pl.diskgroupnum = dg.diskgroupnum
 ORDER BY 
-  pl.physicalplatternum
+  pl.physicalplatternum, trim(dg.diskgroupname)
 ;
 
 -- list the disk groups
@@ -336,5 +336,5 @@ FROM
 WHERE
   lower(dg.diskgroupname) NOT LIKE '%(rem%'
 ORDER BY
-  1
+  3 DESC,1
 ;
