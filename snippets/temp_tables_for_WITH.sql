@@ -78,25 +78,25 @@ records AS (
     g.stvcoll_desc          AS sec_college_desc
   FROM 
     SATURN.SGBSTDN a
-    INNER JOIN SATURN.STVDEGC b ON (
+    LEFT JOIN SATURN.STVDEGC b ON (
       b.stvdegc_code = a.sgbstdn_degc_code_1
     )
-    INNER JOIN SATURN.STVMAJR c ON (
+    LEFT JOIN SATURN.STVMAJR c ON (
       c.stvmajr_code = a.sgbstdn_majr_code_1
     )
-    INNER JOIN SATURN.STVDEGC d ON (
+    LEFT JOIN SATURN.STVDEGC d ON (
       d.stvdegc_code = a.sgbstdn_degc_code_2
     )
-    INNER JOIN SATURN.STVMAJR e ON (
+    LEFT JOIN SATURN.STVMAJR e ON (
       e.stvmajr_code = a.sgbstdn_majr_code_2
     )
-    INNER JOIN SATURN.STVCOLL f ON (
+    LEFT JOIN SATURN.STVCOLL f ON (
       f.stvcoll_code = a.sgbstdn_coll_code_1
     )
-    INNER JOIN SATURN.STVCOLL g ON (
+    LEFT JOIN SATURN.STVCOLL g ON (
       g.stvcoll_code = a.sgbstdn_coll_code_2
     )
-    INNER JOIN SATURN.STVLEVL h ON (
+    LEFT JOIN SATURN.STVLEVL h ON (
       h.stvlevl_code = a.sgbstdn_levl_code
     )
   WHERE

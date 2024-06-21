@@ -10,6 +10,7 @@ from
 order by 1
 ;
 
+-- Get list of all clients used in last 90 days
 select 
   a.usernum AS user_num,
   a.logdate,
@@ -32,3 +33,26 @@ where
   AND usernum not in (294, 3096)
   AND a.messagetext LIKE '%logon%'
 ;
+
+-- get list of all Thick client users in the last 6 months
+SELECT DISTINCT 
+  a.usernum AS user_num,
+  trim(b.username)   AS userid,
+  trim(b.realname) AS user_name,
+  max(a.logdate) AS user_last_login
+FROM
+  HSI.SECURITYLOG a
+  INNER JOIN HSI.USERACCOUNT b ON 
+    a.usernum = b.usernum
+WHERE
+  a.logdate >= SYSDATE - 180
+  AND b.username NOT LIKE '%(deactivated)%'
+  AND a.messagetext LIKE '%Client 20.3.33%'
+GROUP BY
+  a.usernum, 
+  trim(b.username),
+  trim(b.realname)
+ORDER BY
+ a.usernum
+;
+  select * from hsi.useraccount;
