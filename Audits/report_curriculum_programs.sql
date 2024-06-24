@@ -1,12 +1,13 @@
 -- =======================================================================================
---Programs
+-- Audit of Programs to dLevels
+--
+-- Must run as DSDMGR
 -- 
--- This query returns the programs and associtated majors/minors/concentrations for a
+-- This query returns the programs and associated majors/minors/concentrations for a
 -- given term code.  Adapted from code by Mike Earnest
 --
 -- @param &&fiscal_year  The terms ( 'FY-1'03, 'FY'01, 'FY'02  ) to query
 -- =======================================================================================
-DEFINE fiscal_year = '2024';
 SELECT 
   *
 FROM (
@@ -116,8 +117,11 @@ ORDER BY
   major.sorcmjr_majr_code,
   conc.sorccon_majr_code_conc
 )
---WHERE
---  "Calculated dLevel" not LIKE '%=> D%'
+
+ -- comment out to get all rows.
+WHERE
+  "Calculated dLevel" not LIKE '%=> D%'
+ -- ----------------------------
 ORDER BY
   "Calculated dLevel"
 ;
