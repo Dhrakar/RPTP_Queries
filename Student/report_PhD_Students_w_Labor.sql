@@ -59,7 +59,6 @@ WITH
 students AS (  
   SELECT 
     reg.sfrstcr_pidm    AS pidm,
-    a.ssbsect_camp_code AS campus,
     sum(reg.sfrstcr_credit_hr) AS sch
   FROM
     SATURN.SFRSTCR reg
@@ -78,8 +77,31 @@ students AS (
         reg.sfrstcr_term_code = :the_term
     AND reg.sfrstcr_levl_code LIKE '%F'
   GROUP BY
-    reg.sfrstcr_pidm, 
-    a.ssbsect_camp_code
+    reg.sfrstcr_pidm
+),
+labor AS (
+SELECT DISTINCT
+  a.nbrjlbd_pidm AS pidm,
+  a.nbrjlbd_posn AS posn,
+  a.nbrjlbd_suff AS suff,
+  b.ftvfund_ftyp_code AS fund_typ,
+  a.nbrjlbd_fund_code AS fund,
+  a.nbrjlbd_orgn_code AS orgn,
+  a.nbrjlbd_percent AS pct
+FROM
+  POSNCTL.NBRJLBD a
+  JOIN FIMSMGR.FTVFUND b ON
+    b.ftvfund_fund_code = a.nbrjlbd_fund_code
+WHERE
+  a.nbrjlbd_effective_date = (     
+    SELECT MAX (a2.nbrjlbd_effective_date)
+    FROM POSNCTL.NBRJLBD a2
+    WHERE (
+          a.nbrjlbd_pidm = a2.nbrjlbd_pidm
+      AND a.nbrjlbd_posn = a2.nbrjlbd_posn
+      AND a.nbrjlbd_suff = a2.nbrjlbd_suff
+    )
+  )
 )
 SELECT DISTINCT
   :the_term                   AS "Term Code",
@@ -94,9 +116,12 @@ SELECT DISTINCT
     || substr ( iden.spriden_mi,1,1)                      
                               AS "Full Name",
   records.prim_college_desc   AS "Primary College",
+  records.prim_degree_desc    AS "Primary Degree",
   records.prim_major_desc     AS "Primary Major",
+  records.sec_degree_desc     AS "Secondary Degree",
+  records.sec_major_desc      AS "Secondary Major",
   DSDUAF.f_decode$home_campus (
-    students.campus
+    records.campus
   )                           AS "Home Campus",
   students.sch                AS "Registered SCH",
   DECODE (
@@ -105,6 +130,10 @@ SELECT DISTINCT
     'T', 'Terminated',
     'Not Employee'
   )                           AS "UA Status",
+  CASE
+    WHEN ua.pebempl_empl_status = 'A' THEN ua.pebempl_ecls_code
+    ELSE NULL
+  END                         AS "Employee Class",
   CASE 
     WHEN ua.pebempl_empl_status = 'A' THEN org.title3
     ELSE  NULL
@@ -115,17 +144,19 @@ SELECT DISTINCT
   END                         AS "Position Department",
   pos.nbrjobs_desc            AS "Position Title",
   pos.nbrjobs_ecls_code       AS "Position Class",
-  job.nbrbjob_posn 
+  '(' || job.nbrbjob_contract_type || ') '
+    || job.nbrbjob_posn 
     || '/' 
     || job.nbrbjob_suff       AS "Position",
-  dist.nbrjlbd_percent        AS "Labor %",
-  dist.nbrjlbd_fund_code 
-    || '/'
-    || dist.nbrjlbd_orgn_code AS "Labor Fund/Org",
-  ftyp.ftvfund_ftyp_code      AS "Labor Fund Type"
+  LISTAGG (
+    labor.fund_typ || ' => ' || labor.fund || '/' || labor.orgn || '(' || labor.pct || '%)', ','
+  ) WITHIN GROUP (
+    ORDER BY labor.fund_typ , labor.pct DESC
+  )                           AS "Labor Dist." 
 FROM
   records
-  INNER JOIN students ON records.pidm = students.pidm
+  INNER JOIN students ON 
+    records.pidm = students.pidm
   INNER JOIN SATURN.SPRIDEN iden ON 
     iden.spriden_pidm = records.pidm
   INNER JOIN SATURN.SPBPERS bio ON 
@@ -137,7 +168,7 @@ FROM
   LEFT JOIN POSNCTL.NBRBJOB job ON (
         records.pidm = job.nbrbjob_pidm
     -- uncomment to limit to just current positions
-    AND job.nbrbjob_contract_type = 'P'
+    -- AND job.nbrbjob_contract_type = 'P'
     -- -----------------------------------
     AND job.nbrbjob_begin_date <= CURRENT_DATE
     AND ( 
@@ -150,18 +181,16 @@ FROM
     AND job.nbrbjob_posn = pos.nbrjobs_posn
     AND job.nbrbjob_suff = pos.nbrjobs_suff
   )
-  LEFT JOIN POSNCTL.NBRJLBD dist ON ( 
-        job.nbrbjob_pidm = dist.nbrjlbd_pidm
-    AND job.nbrbjob_posn = dist.nbrjlbd_posn
-    AND job.nbrbjob_suff = dist.nbrjlbd_suff
+  LEFT JOIN labor ON (
+    labor.pidm = records.pidm
+    AND labor.posn = job.nbrbjob_posn
+    AND labor.suff = job.nbrbjob_suff
   )
-  LEFT JOIN FIMSMGR.FTVFUND ftyp ON 
-    dist.nbrjlbd_fund_code = ftyp.ftvfund_fund_code
 WHERE
   iden.spriden_change_ind IS NULL
   AND (
     pos.nbrjobs_ecls_code IS NULL 
-    OR pos.nbrjobs_ecls_code NOT IN ('EX', 'XR', 'XT', 'NR', 'NT')
+    OR pos.nbrjobs_ecls_code NOT IN ('XT', 'NR')
   )
   -- limit to the most current position (if exists)
   AND (
@@ -176,19 +205,50 @@ WHERE
       )
     )
   )
-  -- limit to the most current labor dist for this job (if exists)
-  AND (
-       dist.nbrjlbd_pidm IS NULL 
-    OR dist.nbrjlbd_effective_date = (     
-      SELECT MAX (dist2.nbrjlbd_effective_date)
-      FROM POSNCTL.NBRJLBD dist2
-      WHERE (
-            dist.nbrjlbd_pidm = dist2.nbrjlbd_pidm
-        AND dist.nbrjlbd_posn = dist2.nbrjlbd_posn
-        AND dist.nbrjlbd_suff = dist2.nbrjlbd_suff
-      )
-    )
-  )
+GROUP BY
+  :the_term,
+  iden.spriden_id,
+  iden.spriden_last_name
+    || ', '
+    || coalesce (
+        bio.spbpers_pref_first_name,
+        iden.spriden_first_name 
+       )
+    || ' ' 
+    || substr ( iden.spriden_mi,1,1),
+  records.prim_college_desc,
+  records.prim_major_desc,
+  records.prim_degree_desc,
+  records.sec_major_desc,
+  records.sec_degree_desc, 
+  DSDUAF.f_decode$home_campus (
+    records.campus
+  ),
+  students.sch,
+  DECODE (
+    ua.pebempl_empl_status,
+    'A', 'Active',
+    'T', 'Terminated',
+    'Not Employee'
+  ),
+  CASE
+    WHEN ua.pebempl_empl_status = 'A' THEN ua.pebempl_ecls_code
+    ELSE NULL
+  END,
+  CASE
+    WHEN ua.pebempl_empl_status = 'A' THEN org.title3
+    ELSE  NULL
+  END,
+  CASE 
+    WHEN ua.pebempl_empl_status = 'A' THEN org.title   
+    ELSE NULL
+  END,
+  pos.nbrjobs_desc,
+  pos.nbrjobs_ecls_code,
+  '(' || job.nbrbjob_contract_type || ') '
+    || job.nbrbjob_posn 
+    || '/' 
+    || job.nbrbjob_suff
 ORDER BY
   iden.spriden_id
 ;
