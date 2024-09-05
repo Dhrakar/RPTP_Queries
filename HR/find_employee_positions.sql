@@ -15,9 +15,14 @@
 --   FTVORGN_LEVELS
 -- =============================================================================
 SELECT DISTINCT
+  dsduaf.f_decode$orgn_campus(
+    org.level1
+  )                           AS "Campus",
   org.title2                  AS "Cabinet",
   org.title3                  AS "Unit",
   org.title                   AS "Department",
+  ua.pebempl_orgn_code_home   AS "Home dLevel", 
+  ua.pebempl_orgn_code_dist   AS "Home TKL", 
   emp.spriden_id              AS "UA ID",
   usr.gobtpac_external_user   AS "UA Username",
   emp.spriden_pidm            AS "Banner #",
@@ -55,9 +60,14 @@ SELECT DISTINCT
         bio.spbpers_sex
       )
     END                       AS "Gender",
-  ua.pebempl_empl_status      AS "UA Status",
-  ua.pebempl_first_hire_date  AS "First Hired",
-  ua.pebempl_adj_service_date AS "Adj Service Start",
+  decode (
+    ua.pebempl_empl_status,
+    'A', 'Active: ' || to_char( ua.pebempl_current_hire_date, 'DD-MON-yy'),
+    'T', '  Term: ' || to_char( ua.pebempl_term_date, 'DD-MON-yy'),
+    '?'
+  )                           AS "UA Status",
+  -- ua.pebempl_first_hire_date  AS "First Hired",
+  -- ua.pebempl_adj_service_date AS "Adj Service Start",
   DECODE (
     -- show contract type or '-' if terminated 
     job.nbrbjob_contract_type,
@@ -94,14 +104,14 @@ SELECT DISTINCT
     || ', ' 
     || boss.spriden_first_name AS "Supervisor Name",
   busr.gobtpac_external_user
-    || '@alaska.edu'          AS "Supervisor Email"
+    || '@alaska.edu'           AS "Supervisor Email"
 FROM
   SATURN.SPRIDEN emp
-  INNER JOIN SATURN.SPBPERS bio ON emp.spriden_pidm = bio.spbpers_pidm
-  INNER JOIN PAYROLL.PEBEMPL ua ON emp.spriden_pidm = ua.pebempl_pidm
+  INNER JOIN SATURN.SPBPERS bio  ON emp.spriden_pidm = bio.spbpers_pidm
+  INNER JOIN PAYROLL.PEBEMPL ua  ON emp.spriden_pidm = ua.pebempl_pidm
   INNER JOIN GENERAL.GOBTPAC usr ON emp.spriden_pidm = usr.gobtpac_pidm
-  LEFT JOIN GENERAL.GOBEACC ban ON emp.spriden_pidm = ban.gobeacc_pidm
-  LEFT JOIN POSNCTL.NBRBJOB job ON (
+  LEFT JOIN GENERAL.GOBEACC ban  ON emp.spriden_pidm = ban.gobeacc_pidm
+  LEFT JOIN POSNCTL.NBRBJOB job  ON (
         emp.spriden_pidm = job.nbrbjob_pidm
     -- uncomment to limit to just current positions
     -- AND job.nbrbjob_contract_type = 'P'
@@ -112,18 +122,18 @@ FROM
       OR job.nbrbjob_end_date IS NULL
     )
   )
-  LEFT JOIN POSNCTL.NBRJOBS pos ON ( 
+  LEFT JOIN POSNCTL.NBRJOBS pos  ON ( 
     job.nbrbjob_pidm = pos.nbrjobs_pidm
     AND job.nbrbjob_posn = pos.nbrjobs_posn
     AND job.nbrbjob_suff = pos.nbrjobs_suff
   )
-  LEFT JOIN POSNCTL.NER2SUP sup ON (
+  LEFT JOIN POSNCTL.NER2SUP sup  ON (
         job.nbrbjob_pidm = sup.ner2sup_pidm
     AND job.nbrbjob_posn = sup.ner2sup_posn
     AND job.nbrbjob_suff = sup.ner2sup_suff
     AND sup.ner2sup_sup_ind = 'Y'
   )
-  LEFT JOIN SATURN.SPRIDEN boss ON (
+  LEFT JOIN SATURN.SPRIDEN boss  ON (
     boss.spriden_pidm = sup.ner2sup_sup_pidm
     AND boss.spriden_change_ind IS NULL
   )
@@ -150,8 +160,8 @@ WHERE
  OR ua.pebempl_orgn_code_dist = upper(:uatkl)
  OR ua.pebempl_orgn_code_home = upper(:uadlevel)
   )
-  -- only include currently active employees
-  AND ua.pebempl_empl_status != 'T'
+  -- uncomment to only include currently active employees
+   -- AND ua.pebempl_empl_status != 'T'
   -- only include the current person records for the employee
   AND emp.spriden_change_ind IS NULL
   -- limit to the most current position (if exists)
