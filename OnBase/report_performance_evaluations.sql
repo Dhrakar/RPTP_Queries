@@ -34,18 +34,18 @@ FROM
     itm.itemnum = edate.itemnum
 WHERE
   doc.itemtypenum = 560
-  AND ( -- if there is a date, get the max for this uaid
-    edate.keyvaluedate IS NULL
-    OR edate.keyvaluedate = (
-      SELECT max(edate2.keyvaluedate)
-      FROM HSI.KEYITEM308 edate2
-        INNER JOIN HSI.KEYXITEM116 kwuaid2 ON 
-          edate2.itemnum = kwuaid2.itemnum
-        INNER JOIN HSI.KEYTABLE116 uaid2 ON 
-          kwuaid2.keywordnum = uaid2.keywordnum
-      WHERE uaid2.keyvaluechar = uaid.keyvaluechar
-    )
-  )
+--  AND ( -- if there is a date, get the max for this uaid
+--    edate.keyvaluedate IS NULL
+--    OR edate.keyvaluedate = (
+--      SELECT max(edate2.keyvaluedate)
+--      FROM HSI.KEYITEM308 edate2
+--        INNER JOIN HSI.KEYXITEM116 kwuaid2 ON 
+--          edate2.itemnum = kwuaid2.itemnum
+--        INNER JOIN HSI.KEYTABLE116 uaid2 ON 
+--          kwuaid2.keywordnum = uaid2.keywordnum
+--      WHERE uaid2.keyvaluechar = uaid.keyvaluechar
+--    )
+--  )
 ORDER BY
   trim(campus.keyvaluechar),
   trim(uaid.keyvaluechar)
