@@ -74,7 +74,7 @@ FROM
     emp.pebempl_orgn_code_home = org.orgn_code
   INNER JOIN GENERAL.GOBTPAC usr ON 
     usr.gobtpac_pidm = emp.spriden_pidm
-  INNER JOIN SATURN.SPRADDR adr ON (
+  LEFT JOIN SATURN.SPRADDR adr ON (
     adr.spraddr_pidm = emp.spriden_pidm
     AND adr.spraddr_atyp_code = 'MA'
   )
