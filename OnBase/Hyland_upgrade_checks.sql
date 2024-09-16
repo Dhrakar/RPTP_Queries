@@ -141,7 +141,7 @@ FROM
   JOIN hsi.registeredusers ru ON sl.registernum=ru.registernum
 WHERE 
   (sl.actionnum = 1 and sl.subactionnum = 9)
-  AND sl.logdate > to_date('01-JAN-2015', 'DD-MON-YYYY')
+  AND sl.logdate > to_date('01-JAN-2024', 'DD-MON-YYYY')
 GROUP BY
   extract(year from sl.logdate), 
   extract(month from sl.logdate),
