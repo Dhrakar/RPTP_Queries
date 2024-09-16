@@ -1,4 +1,5 @@
 SELECT 
+  extract(month from slog.logdate) AS "Month",
   slog.usernum AS "ID#",
   lower(trim(usr.username)) || '@alaska.edu' AS "Email",
   trim(usr.realname) AS "Name",
