@@ -22,6 +22,7 @@ SELECT
     || substr(
          emp.spriden_mi,1,1
        )                            AS "Full Name", 
+  adr.spraddr_city                  AS "Mailing Address City",
   emp.nbrjobs_desc                  AS "Position Title",
   dsduaf.f_decode$orgn_campus(
     org.level1
