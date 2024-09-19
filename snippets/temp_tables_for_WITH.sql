@@ -18,6 +18,24 @@ terms AS (
     AND a.stvterm_start_date <= SYSDATE
 )
 
+-- Create a temp table with terms based on the current aidyear
+terms AS (
+    -- this snippet grabs the next aidyr from stvterm as well as the
+    -- corresponding terms for the current aidyr
+    SELECT  
+      101 + a.stvterm_fa_proc_yr                       AS aidyr, 
+      '20' || substr(a.stvterm_fa_proc_yr,1,2) || '03' AS fall_term,
+      '20' || substr(a.stvterm_fa_proc_yr,3,2) || '01' AS spring_term,
+      '20' || substr(a.stvterm_fa_proc_yr,3,2) || '02' AS summer_term 
+    FROM 
+      SATURN.STVTERM a
+    WHERE 
+          a.stvterm_code != '000001'
+      AND a.stvterm_start_date <= SYSDATE
+      AND a.stvterm_end_date >= SYSDATE
+      AND substr(a.stvterm_code,6,1) IN ('1','2','3')
+  )
+
 -- Create a temporary table  of students that are 
 -- registered for the term selected.
 --  - only includes UAF students
