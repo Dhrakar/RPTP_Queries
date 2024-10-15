@@ -104,7 +104,12 @@ SELECT DISTINCT
     || ', ' 
     || boss.spriden_first_name AS "Supervisor Name",
   busr.gobtpac_external_user
-    || '@alaska.edu'           AS "Supervisor Email"
+    || '@alaska.edu'           AS "Supervisor Email",
+  adr.spraddr_street_line1 || ', '
+    || adr.spraddr_street_line2 || ', '
+    || adr.spraddr_city || ', '
+    || adr.spraddr_stat_code || ', '
+    || adr.spraddr_zip         AS "HR Address"
 FROM
   SATURN.SPRIDEN emp
   INNER JOIN SATURN.SPBPERS bio  ON emp.spriden_pidm = bio.spbpers_pidm
@@ -150,7 +155,12 @@ FROM
   LEFT JOIN REPORTS.FTVORGN_LEVELS jorg ON (
     jorg.level8 = dist.nbrjlbd_orgn_code
   )
-  LEFT JOIN FIMSMGR.FTVFUND ftyp ON dist.nbrjlbd_fund_code = ftyp.ftvfund_fund_code
+  LEFT JOIN FIMSMGR.FTVFUND ftyp ON 
+    dist.nbrjlbd_fund_code = ftyp.ftvfund_fund_code
+  LEFT JOIN SATURN.SPRADDR adr ON (
+        adr.spraddr_pidm = emp.spriden_pidm
+    AND adr.spraddr_atyp_code = 'HR'
+  )
 WHERE
   ( 
     emp.spriden_id = trim(:uaid) 
@@ -202,6 +212,17 @@ WHERE
         AND sup.ner2sup_posn = sup2.ner2sup_posn
         AND sup.ner2sup_suff = sup2.ner2sup_suff
       )
+    )
+  )
+  -- Get the most recent mailing address (if exists)
+  AND (
+       adr.spraddr_seqno IS NULL
+    OR adr.spraddr_seqno = (
+      SELECT MAX(a2.spraddr_seqno) 
+      FROM SPRADDR a2
+      WHERE 
+        a2.spraddr_pidm = adr.spraddr_pidm
+        AND a2.spraddr_atyp_code = 'HR'
     )
   )
 ORDER BY
