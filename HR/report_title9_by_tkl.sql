@@ -26,14 +26,18 @@ SELECT
       FROM PAYROLL.PTRECLS a 
       WHERE a.ptrecls_code = emp.nbrjobs_ecls_code 
     )                           AS employee_class,
-  -- emp.pebempl_orgn_code_dist    AS tkl,
-  -- org.level1                    AS campus,
+  emp.pebempl_orgn_code_dist    AS tkl,
+  org.level1                    AS campus,
   org.title2                    AS cabinet,
+  org.orgn_code                 AS dlevel,
   org.title                     AS title,
-  typ.ptrcert_desc              AS certification,
+  typ.ptrcert_desc 
+    || ' (' 
+    || crt.pprcert_cert_code
+    || ')'                      AS certification,
   to_char(
     crt.pprcert_cert_date,
-    'mm/dd/yyyy'
+    'yyyymmdd'
   )                             AS certification_date,
   CASE 
     WHEN to_char( crt.pprcert_cert_date, 'mm/dd/yyyy' ) = '06/20/2024' AND emp.pebempl_current_hire_date < to_date ('11/01/2023', 'mm/dd/yyyy') THEN 'ERROR'
@@ -88,6 +92,8 @@ WHERE
   )
   -- uncomment to get a specific TKL
   -- AND emp.pebempl_orgn_code_dist = :tkl -- filter for TKL
+  -- uncomment for a specific dLevel
+  -- AND emp.pebempl_orgn_code_home = :dlevel -- filter for dLevel
   -- ----------------------------------
 --    -- just UAF TKLs
 --  AND emp.pebempl_orgn_code_dist IN (
@@ -99,7 +105,7 @@ WHERE
 --      ntr2tkl_mau_code = 'F'
 --  )
     -- just folks that roll up to UAFTOT
-  AND org.level1 = 'UAFTOT'
+  AND ( org.orgn_code = 'D5OIR' OR org.orgn_code = 'D5OMB')
   AND (
     -- check for null in case this person does not have any T9 certs
     -- otherwise, find the most recent
@@ -108,7 +114,10 @@ WHERE
       SELECT max(crt2.pprcert_cert_date)
       FROM PAYROLL.PPRCERT crt2
       WHERE crt2.pprcert_pidm = crt.pprcert_pidm
-        -- AND crt2.pprcert_cert_code = crt.pprcert_cert_code
+        AND crt2.pprcert_cert_code IN (
+          -- Title IX training codes
+          'XT9T', 'XT9H', 'XT9', 'XT9I', 'XT9R', 'ZT9R', 'ZT9' 
+        )
     )
   )
 ORDER BY
