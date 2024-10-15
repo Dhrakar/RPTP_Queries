@@ -9,41 +9,61 @@
 -- Params:
 --   :aidyr  the YYXX aidyear (like 2324)
 -- ==================================================================
-
 SELECT DISTINCT
-  dsduaf.f_decode$semester(reg.term_code) AS "Term",
-  reg.subject_code 
-   || reg.course_number                   AS "Course",
-  reg.section_number                      AS "Section",
-  reg.campus_code                         AS "Campus",
-  reg.student_id                          AS "UAID",
-  (
-    SELECT
-      stu.spriden_last_name
-        || ', ' 
-        || stu.spriden_first_name 
-        || ' ' 
-        || stu.spriden_mi  
-    FROM  SATURN.SPRIDEN stu
-    WHERE stu.spriden_id = reg.student_id 
-      AND stu.spriden_change_ind IS NULL
-  )                                       AS "Name",
+  :aidyr                                          AS "Aid Year",
+  dsduaf.f_decode$semester(reg.sfrstcr_term_code) AS "Term",
+  sec.ssbsect_subj_code 
+   || sec.ssbsect_crse_numb                       AS "Course",
+  sec.ssbsect_seq_numb                            AS "Section",
+  sec.ssbsect_camp_code                           AS "Course Campus",
+  stu.spriden_id                                  AS "UAID",
+  stu.spriden_last_name
+    || ', ' 
+    || stu.spriden_first_name 
+    || ' ' 
+    || stu.spriden_mi                             AS "Name",
+  rec.sgbstdn_camp_code                           AS "Home Campus",
+  rec.sgbstdn_degc_code_1                         AS "Primary Degree",
+  rec.sgbstdn_majr_code_1                         AS "Primary Major",
   (
     SELECT a.stvrsts_desc
     FROM SATURN.STVRSTS a
-    WHERE a.stvrsts_code = reg.registration_status
+    WHERE a.stvrsts_code = enr.stvrsts_code
   )                                       AS "Status"
 FROM
-  DSDMGR.DSD_REGISTRATION  reg
+  -- start with registration records
+  SATURN.SFRSTCR reg
+  -- get the statuses
+  INNER JOIN SATURN.STVRSTS enr ON (
+        reg.sfrstcr_rsts_code = enr.stvrsts_code
+    --  uncomment limit to just enrolled
+    -- AND enr.stvrsts_voice_type = 'R'
+  ) 
+  -- find the course info for each registered CRN
+  INNER JOIN SATURN.SSBSECT sec ON (
+        sec.ssbsect_term_code = reg.sfrstcr_term_code
+    AND sec.ssbsect_crn = reg.sfrstcr_crn
+  )
+  -- find the student info for each registration
+  INNER JOIN SATURN.SPRIDEN stu ON (
+    stu.spriden_pidm = reg.sfrstcr_pidm
+    AND stu.spriden_change_ind IS NULL
+  )
+  -- limit to just currently undergrad students
+  INNER JOIN SATURN.SGBSTDN rec ON (
+    rec.sgbstdn_pidm = reg.sfrstcr_pidm
+    AND rec.sgbstdn_levl_code = 'UF'
+  )
 WHERE
   -- build out the terms from the suplied aidyear
-  reg.term_code IN (
+  reg.sfrstcr_term_code IN (
     '20' || substr(:aidyr,1,2) || '03', -- fall_term
     '20' || substr(:aidyr,3,2) || '01', -- spring_term
     '20' || substr(:aidyr,3,2) || '02'  -- summer_term
   )
+  -- limit to just URSA courses
   AND ( 
-    reg.subject_code || reg.course_number ) IN (
+    sec.ssbsect_subj_code || sec.ssbsect_crse_numb ) IN (
     'ACCTF497',
     'ANLF497',
     'ANSF340','ANSF474','ANSF478','ANSF497',
@@ -112,7 +132,16 @@ WHERE
     'WLFF497',
     'WMSF497' 
   )
+  AND (
+    -- get the most recent student record 
+    rec.sgbstdn_term_code_eff = (
+      SELECT MAX(i.sgbstdn_term_code_eff)
+      FROM SATURN.SGBSTDN i
+      WHERE i.sgbstdn_pidm = rec.sgbstdn_pidm
+        AND i.sgbstdn_term_code_eff <= reg.sfrstcr_term_code
+    )
+  )   
 ORDER BY
-  dsduaf.f_decode$semester(reg.term_code),
-  reg.student_id
+  1,2,5
 ;
+
