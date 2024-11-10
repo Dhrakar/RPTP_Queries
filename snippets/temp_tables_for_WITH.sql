@@ -19,22 +19,68 @@ terms AS (
 )
 
 -- Create a temp table with terms based on the current aidyear
-terms AS (
+tterms AS (
     -- this snippet grabs the next aidyr from stvterm as well as the
     -- corresponding terms for the current aidyr
     SELECT  
-      101 + a.stvterm_fa_proc_yr                       AS aidyr, 
-      '20' || substr(a.stvterm_fa_proc_yr,1,2) || '03' AS fall_term,
-      '20' || substr(a.stvterm_fa_proc_yr,3,2) || '01' AS spring_term,
-      '20' || substr(a.stvterm_fa_proc_yr,3,2) || '02' AS summer_term 
-    FROM 
-      SATURN.STVTERM a
-    WHERE 
-          a.stvterm_code != '000001'
-      AND a.stvterm_start_date <= SYSDATE
-      AND a.stvterm_end_date >= SYSDATE
-      AND substr(a.stvterm_code,6,1) IN ('1','2','3')
+       
+      101 + b.stvterm_fa_proc_yr                       AS aidyr, -- 'future' aidyear for checking FAFSA info
+      '20' || substr(b.stvterm_fa_proc_yr,1,2) || '03' AS fall_term,
+      '20' || substr(b.stvterm_fa_proc_yr,3,2) || '01' AS spring_term,
+      '20' || substr(b.stvterm_fa_proc_yr,3,2) || '02' AS summer_term
+    FROM
+        SATURN.SOBPTRM a
+        INNER JOIN SATURN.STVTERM b ON (
+            b.stvterm_code = a.sobptrm_term_code
+        )
+    WHERE
+            a.sobptrm_ptrm_code = 'F'
+        AND SYSDATE >= a.sobptrm_start_date
+        AND SYSDATE <= a.sobptrm_end_date
   )
+
+-- create a temp table for terms using specific start/end dates
+terms AS (
+  SELECT -- this picks the current term base on (roughly) registration dates
+         -- the conversion to YYYYMMDD in the compariosn is because the 'time'
+         -- in SYSTDATE throws off the calc for the endpoints
+    CASE
+      WHEN 
+        -- For Jan 1 -> Jan 31 return Spring for current year
+        to_char( SYSDATE, 'YYYYMMDD') 
+          BETWEEN 
+            to_char( to_date('01/01/' || extract(year from SYSDATE), 'mm/dd/yyyy') , 'YYYYMMDD')
+          AND 
+            to_char( to_date('01/31/' || extract(year from SYSDATE), 'mm/dd/yyyy') , 'YYYYMMDD') 
+        THEN extract(year from SYSDATE) || '01'
+      WHEN  
+        -- For Feb 1 -> Apr 15 return Summer for current year
+        to_char( SYSDATE, 'YYYYMMDD') 
+          BETWEEN 
+            to_char( to_date('02/01/' || extract(year from SYSDATE), 'mm/dd/yyyy') , 'YYYYMMDD')
+          AND 
+            to_char( to_date('04/15/' || extract(year from SYSDATE), 'mm/dd/yyyy') , 'YYYYMMDD') 
+        THEN extract(year from SYSDATE) || '02'
+      WHEN  
+        -- For Apr 16 -> Oct 31 return Fall for current year
+        to_char( SYSDATE, 'YYYYMMDD') 
+          BETWEEN 
+            to_char( to_date('04/16/' || extract(year from SYSDATE), 'mm/dd/yyyy') , 'YYYYMMDD')
+          AND 
+            to_char( to_date('11/01/' || extract(year from SYSDATE), 'mm/dd/yyyy') , 'YYYYMMDD')
+        THEN extract(year from SYSDATE) || '03'
+      WHEN  
+        -- For Nov 1 -> Dec 31 return Spring for next year
+        to_char( SYSDATE, 'YYYYMMDD') 
+          BETWEEN 
+            to_char( to_date('11/01/' || extract(year from SYSDATE), 'mm/dd/yyyy') , 'YYYYMMDD')
+          AND 
+            to_char( to_date('12/31/' || extract(year from SYSDATE), 'mm/dd/yyyy') , 'YYYYMMDD') 
+        THEN (1 + extract(year from SYSDATE)) || '01'
+    END                        AS curr_term
+  FROM 
+    DUAL
+)
 
 -- Create a temporary table  of students that are 
 -- registered for the term selected.
