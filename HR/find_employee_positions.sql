@@ -169,6 +169,7 @@ WHERE
  OR usr.gobtpac_external_user = lower( substr(:uaemail, 1, instr(:uaemail, '@') - 1 ) )
  OR ua.pebempl_orgn_code_dist = upper(:uatkl)
  OR ua.pebempl_orgn_code_home = upper(:uadlevel)
+ OR ban.gobeacc_username = upper(:bannerid)
   )
   -- uncomment to only include currently active employees
    -- AND ua.pebempl_empl_status != 'T'
