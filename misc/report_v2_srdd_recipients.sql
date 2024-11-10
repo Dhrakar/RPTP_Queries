@@ -169,6 +169,11 @@ WHERE
   emp.nbrbjob_contract_type = 'P'
   -- only the eligible staffers
   AND emp.nbrjobs_ecls_code IN ('NR','NX','XR','XX','EX')
+  -- only UAF or NULL for the campus org
+  AND ( 
+       org.level1 IS NULL
+    OR org.level1 = 'UAFTOT'
+  )
   -- limit to the most current supervisor record (if there is one)
   AND (
        sup.ner2sup_pidm IS NULL 
@@ -199,7 +204,7 @@ ORDER BY
   dsduaf.f_decode$orgn_campus(
     org.level1
   ),                                  -- then by campus
-  round(worked.span / 365.25) DESC,   -- then by longevity years (descending)
+  2 DESC,                             -- then by longevity years (descending)
   org.title2,                         -- cabinet
   org.title3,                         -- unit
   org.title,                          -- department
