@@ -16,11 +16,33 @@ FROM
   SYS.ALL_COL_COMMENTS search
 WHERE 
  -- UPPER(search.owner)       LIKE '%' || UPPER(:owner_needle) || '%'
- -- UPPER(search.table_name)  LIKE '%' || UPPER(:table_needle) || '%'
- UPPER(search.column_name) LIKE '%' || UPPER(:col_needle) || '%'
+ UPPER(search.table_name)  LIKE '%' || UPPER(:table_needle) || '%'
+ -- UPPER(search.column_name) LIKE '%' || UPPER(:col_needle) || '%'
  -- UPPER(search.comments)    LIKE '%' || UPPER(:comment_needle) || '%'
  -- AND search.owner != 'DSDMGR'  
 ORDER BY 
   search.owner,
   search.table_name
 ;
+
+-- =====================================================================
+-- This query finds any comments for the requested table.  It uses the
+-- same parameters as the col comment query so that you don't have to
+-- reenter things
+-- =====================================================================
+SELECT DISTINCT 
+  search.owner,
+  search.table_name,
+  search.table_type,
+  search.comments
+FROM 
+  SYS.ALL_TAB_COMMENTS search
+WHERE 
+ -- UPPER(search.owner)       LIKE '%' || UPPER(:owner_needle) || '%'
+ UPPER(search.table_name)  LIKE '%' || UPPER(:table_needle) || '%'
+ -- AND search.owner != 'DSDMGR'   
+ORDER BY 
+  search.owner,
+  search.table_name
+;
+
