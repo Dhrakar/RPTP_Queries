@@ -1,28 +1,34 @@
 -- =============================================================================
---  SQL For getting information about the current positions for an employee.
+--  SQL For getting information about the current positions for employees.  It
 --  includes the labor distribution, position details and current supervisor.
 --
 --  This script will accept any of the following params
 --  @param :uaid     -- UA Employee/Student ID
 --  @param :username -- UA Username
---  @param :pidm     -- unique Banner numeric ID
+--  @param :pidm     -- Unique Banner numeric ID
 --  @param :uaemail  -- UA email address (eg; username@alaska.edu)
 --  @param :uatkl    -- All employees in that time keeping location
 --  @param :uadlevel -- All the employees in a particular department
+--  @param :bannerid -- UA Banner ID (ex; FNABC)
 --
 --  Included RPTP tables
---   SPRIDEN, GOBTPAC, NBRBJOB, NBRJOBS, NER2SUP, NBRJLBD, FTVFUND, 
+--   SPRIDEN, GOBTPAC, GOBEACC, NBRBJOB, NBRJOBS, NER2SUP, NBRJLBD, FTVFUND, 
 --   FTVORGN_LEVELS
 -- =============================================================================
 SELECT DISTINCT
-  dsduaf.f_decode$orgn_campus(
-    org.level1
-  )                           AS "Campus",
+  CASE
+    WHEN org.level1 = 'UATKL' THEN 'TKL'
+    WHEN org.level1 LIKE '%TOT' THEN substr(org.level1, 0, length(org.level1) - 3)
+    ELSE 'ZZZ'
+  END                         AS "Campus",
   org.title2                  AS "Cabinet",
   org.title3                  AS "Unit",
   org.title                   AS "Department",
   ua.pebempl_orgn_code_home   AS "Home dLevel", 
   ua.pebempl_orgn_code_dist   AS "Home TKL", 
+  dsduaf.f_sc_units(
+    org.level3
+  )                           AS "SC Unit",
   emp.spriden_id              AS "UA ID",
   usr.gobtpac_external_user   AS "UA Username",
   emp.spriden_pidm            AS "Banner #",
@@ -111,14 +117,20 @@ SELECT DISTINCT
     || adr.spraddr_stat_code || ', '
     || adr.spraddr_zip         AS "HR Address"
 FROM
+  -- start with the identity table
   SATURN.SPRIDEN emp
+  -- join with biographical info for each person
   INNER JOIN SATURN.SPBPERS bio  ON emp.spriden_pidm = bio.spbpers_pidm
+  -- join with core employee information (and limit to just UA employees)
   INNER JOIN PAYROLL.PEBEMPL ua  ON emp.spriden_pidm = ua.pebempl_pidm
+  -- join with SSO username informaiton (eg; Google username)
   INNER JOIN GENERAL.GOBTPAC usr ON emp.spriden_pidm = usr.gobtpac_pidm
+  -- join with the Banner login information (if exists)
   LEFT JOIN GENERAL.GOBEACC ban  ON emp.spriden_pidm = ban.gobeacc_pidm
+  -- get information about this person's current base UA job (if it exists)
   LEFT JOIN POSNCTL.NBRBJOB job  ON (
         emp.spriden_pidm = job.nbrbjob_pidm
-    -- uncomment to limit to just current positions
+    -- uncomment to limit to just current primary position
     -- AND job.nbrbjob_contract_type = 'P'
     -- -----------------------------------
     AND job.nbrbjob_begin_date <= CURRENT_DATE
@@ -127,42 +139,54 @@ FROM
       OR job.nbrbjob_end_date IS NULL
     )
   )
+  -- get information about this person's current UA position(s) (if any exist)
   LEFT JOIN POSNCTL.NBRJOBS pos  ON ( 
     job.nbrbjob_pidm = pos.nbrjobs_pidm
     AND job.nbrbjob_posn = pos.nbrjobs_posn
     AND job.nbrbjob_suff = pos.nbrjobs_suff
   )
+  -- get information about this person's current UA supervisor (if any exist)
   LEFT JOIN POSNCTL.NER2SUP sup  ON (
         job.nbrbjob_pidm = sup.ner2sup_pidm
     AND job.nbrbjob_posn = sup.ner2sup_posn
     AND job.nbrbjob_suff = sup.ner2sup_suff
     AND sup.ner2sup_sup_ind = 'Y'
   )
+  -- grab identity info for the supervisor (if assigned)
   LEFT JOIN SATURN.SPRIDEN boss  ON (
     boss.spriden_pidm = sup.ner2sup_sup_pidm
     AND boss.spriden_change_ind IS NULL
   )
-  LEFT JOIN GENERAL.GOBTPAC busr ON 
+  -- grab the username info for the supervisor (also for email) (if any assigned)
+  LEFT JOIN GENERAL.GOBTPAC busr ON (
     boss.spriden_pidm = busr.gobtpac_pidm
+  )
+  -- join with the labor distributions for thie persons positions (if any exist)
   LEFT JOIN POSNCTL.NBRJLBD dist ON ( 
         job.nbrbjob_pidm = dist.nbrjlbd_pidm
     AND job.nbrbjob_posn = dist.nbrjlbd_posn
     AND job.nbrbjob_suff = dist.nbrjlbd_suff
   )
+  -- join to find the org hierarchy for this person's department (if assigned)
   LEFT JOIN REPORTS.FTVORGN_LEVELS org ON (
     org.orgn_code = ua.pebempl_orgn_code_home
   )
+  -- join to find org hierarchy for the labor funds (if any)
   LEFT JOIN REPORTS.FTVORGN_LEVELS jorg ON (
     jorg.level8 = dist.nbrjlbd_orgn_code
   )
-  LEFT JOIN FIMSMGR.FTVFUND ftyp ON 
+  -- join for details about the labor funds (if any)
+  LEFT JOIN FIMSMGR.FTVFUND ftyp ON (
     dist.nbrjlbd_fund_code = ftyp.ftvfund_fund_code
+  )
+  -- join to grab the most recent HR address for this person (if any)
   LEFT JOIN SATURN.SPRADDR adr ON (
         adr.spraddr_pidm = emp.spriden_pidm
     AND adr.spraddr_atyp_code = 'HR'
   )
 WHERE
   ( 
+    -- various filter options
     emp.spriden_id = trim(:uaid) 
  OR emp.spriden_pidm = trim(:pidm)
  OR usr.gobtpac_external_user = lower(trim(:uaname)) 

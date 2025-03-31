@@ -9,7 +9,7 @@ SELECT
   emp.spriden_id                 AS "UA ID",
   emp.spriden_last_name
     || ', '
-    || nvl(
+    || coalesce (
          bio.spbpers_pref_first_name,
          emp.spriden_first_name
        )
@@ -93,7 +93,7 @@ WHERE
     --  uncomment to limit to the last 3 months
     -- SYSDATE - 90
     -- OR uncomment to use a specific start date
-      to_date('05/01/2024', 'mm/dd/yyyy')
+      to_date('10/09/2024', 'mm/dd/yyyy')
     -- 
     AND SYSDATE 
   -- do not include student employees or the old Adjunct categories

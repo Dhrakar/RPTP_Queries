@@ -59,8 +59,12 @@ FROM
 WHERE
   -- only include Primary positions
   emp.nbrbjob_contract_type = 'P'
-  -- filter to just the desired TKL
-  AND UPPER(emp.pebempl_orgn_code_dist) LIKE UPPER(:the_tkl)
+  AND (
+    -- filter to just the desired TKL
+    UPPER(emp.pebempl_orgn_code_dist) LIKE UPPER(:the_tkl)
+    -- or filter by employee
+    OR emp.spriden_id = :uaid
+  )
   -- limit to just the most recent certification of the desired type (if exists)
   AND (
     crt.pprcert_pidm IS NULL

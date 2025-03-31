@@ -19,7 +19,7 @@ terms AS (
 )
 
 -- Create a temp table with terms based on the current aidyear
-tterms AS (
+terms AS (
     -- this snippet grabs the next aidyr from stvterm as well as the
     -- corresponding terms for the current aidyr
     SELECT  

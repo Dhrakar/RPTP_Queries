@@ -178,6 +178,20 @@ GROUP BY i.itemtypenum, dt.itemtypename
 ORDER BY i.itemtypenum
 ;
 
+SELECT
+  substr(dt.itemtypename, 0, instr(dt.itemtypename,' ')) AS "Document Group",
+  COUNT(i.itemtypenum) AS "Total # Docs"
+FROM
+  HSI.ITEMDATA i
+  INNER JOIN HSI.DOCTYPE dt ON 
+    i.itemtypenum = dt.itemtypenum
+GROUP BY
+  substr(dt.itemtypename, 0, instr(dt.itemtypename,' '))
+ORDER BY
+  2 desc
+;
+
+
 /*
 	docs stored by month 
 	always try to run, but off hours since it aggregates on datestored
@@ -612,3 +626,25 @@ select usernum, username
 from hsi.useraccount
 where bitand(licenseflag, 1) = 1
 order by username
+;
+
+-- Shows Actions that include debugging or logging
+SELECT 
+  action.actionnum        AS "Action #",
+  trim(action.actionname) AS "Action Name",
+  DECODE (
+    action.flags,
+    '4096',      'Debug',
+   '1073741824', 'Logging',
+   '1073745920', 'Both',
+   'None'
+  )                       AS "Action Flags"
+FROM
+  HSI.ACTION action
+WHERE
+  action.flags IN (
+   '4096',
+   '1073741824',
+   '1073745920'
+  )
+;

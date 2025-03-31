@@ -184,12 +184,7 @@ WHERE
   -- 133 => UA Scholars
   -- 135 => SORS
   -- 138 => SystemGovernance
-  idp.diskgroupnum IN ( 
-    101, 102, 105, 106, 107, 108, 
-    111, 112, 113, 117, 118, 119, 
-    121, 122, 124, 126, 129, 
-    131, 133, 135, 138 
-  )
+  idp.diskgroupnum between 100 and 200
 group by 
   idp.diskgroupnum,
   trim(dt.itemtypename)
@@ -256,9 +251,13 @@ WHERE
   -- 133 => UA Scholars
   -- 135 => SORS
   -- encrypted
+  -- 149 => Bursar
   -- 152 => UA_ADMISSIONS
   -- 157 => UA_REGISTRAR
+  
   idp.diskgroupnum IN ( 101, 102, 111, 119, 121, 122, 124, 129, 133, 135 )
+  -- only look for non-system doc types inadvertantly put into the system drive
+  AND dt.itemtypename NOT LIKE 'SYS %'
   -- uncomment out to limit b date range
   -- AND itd.itemdate < to_date('01/01/2000', 'MM/DD/YYYY')
 --group by 
@@ -269,6 +268,7 @@ order by
   trim(dt.itemtypename)
 ;
 
+select * from HSI.DISKGROUP;
 select * from HSI.DGMIGRATORJOB;
 select * from HSI.DGMQUEUEDFILE;
 select * from HSI.doctype where diskgroupnum = 119;
