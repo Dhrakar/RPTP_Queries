@@ -16,10 +16,10 @@ FROM
   SYS.ALL_COL_COMMENTS search
 WHERE 
  -- UPPER(search.owner)       LIKE '%' || UPPER(:owner_needle) || '%'
- UPPER(search.table_name)  LIKE '%' || UPPER(:table_needle) || '%'
- -- UPPER(search.column_name) LIKE '%' || UPPER(:col_needle) || '%'
+ -- UPPER(search.table_name)  LIKE '%' || UPPER(:table_needle) || '%'
+ UPPER(search.column_name) LIKE '%' || UPPER(:col_needle) || '%'
  -- UPPER(search.comments)    LIKE '%' || UPPER(:comment_needle) || '%'
- -- AND search.owner != 'DSDMGR'  
+ AND search.owner NOT LIKE 'DSDMGR%'  
 ORDER BY 
   search.owner,
   search.table_name

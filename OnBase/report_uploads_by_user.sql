@@ -1,5 +1,6 @@
 SELECT
-  --itm.datestored          AS "Date Uploaded",
+  to_char(itm.datestored, 'YYYY')          AS "Year Uploaded",
+  to_char(itm.datestored, 'MM')          AS "Month Uploaded",
   nvl(
     trim(usr.realname), 
     'NextGen'
@@ -14,11 +15,17 @@ FROM
     doc.itemtypenum = itm.itemtypenum
 WHERE
   itm.datestored BETWEEN to_date('01/01/2024', 'MM/DD/YYYY') AND SYSDATE
-  AND usr.usernum = 4123  -- ejhoward
+  AND usr.usernum = 4135
+  -- AND usr.username = 'wmason3'
 GROUP BY
-  --itm.datestored,
+  to_char(itm.datestored, 'YYYY'),
+  to_char(itm.datestored, 'MM'),
   nvl(trim(usr.realname), 'NextGen'),
   trim(doc.itemtypename)
 ORDER BY
+  to_char(itm.datestored, 'YYYY') DESC,
+  to_char(itm.datestored, 'MM') DESC,
   trim(doc.itemtypename)
 ;
+
+select * from hsi.itemdata;
