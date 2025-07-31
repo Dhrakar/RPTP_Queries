@@ -62,8 +62,8 @@ GROUP BY
 ORDER BY
   "Status", "Username" ASC
 )
-WHERE 
-       instr(groups,'doctype.uaf.mou_moa') > 0 
-   AND instr(groups,'user.doc.upload') > 0
+--WHERE 
+--       instr(groups,'doctype.uaf.mou_moa') > 0 
+--   AND instr(groups,'user.doc.upload') > 0
    --AND instr(groups,'user.doc.print') > 0
 ;

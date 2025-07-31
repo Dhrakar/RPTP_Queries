@@ -5,19 +5,29 @@
 -- ============================================================
 SELECT
   '[' || lpad(dt.itemtypenum, 3, '0') || '] ' ||
-    trim(dt.itemtypename)       AS "DocType",
+    trim(dt.itemtypename)       AS "[ID#] DocType",
   '[' || lpad(dt.itemtypegroupnum, 3, '0') || '] ' ||
-    trim(itg.itemtypegroupname) AS "DocType Group",
+    trim(itg.itemtypegroupname) AS "[ID#] DocType Group",
   '[' || dt.diskgroupnum || '] ' ||
-    trim(dg.diskgroupname)      AS "DocType Default Disk Group",
+    trim(dg.diskgroupname)      AS "[ID#] DocType Default Disk Group",
+  -- comment out if not doing totals
+--  count(distinct itd.itemnum)   AS "Total Documents"
+  -- --------------------------------
+  -- comment out if doing totals
   LISTAGG (
     substr(trim(ug.usergroupname),11), 
     ', '
   ) WITHIN GROUP (
     order by ug.usergroupnum
-  )                           AS "(ua_onbase.) Access Group"
+  )                           AS "(ua_onbase.) Access Groups"
+  -- ---------------------------------
 FROM
   HSI.DOCTYPE dt
+  -- comment out if not getting doc totals
+--  INNER JOIN HSI.ITEMDATA itd ON (
+--    dt.itemtypenum = itd.itemtypenum
+--  )
+  -- -------------------------------------
   INNER JOIN HSI.ITEMTYPEGROUP itg ON
     itg.itemtypegroupnum = dt.itemtypegroupnum
   INNER JOIN HSI.DISKGROUP dg ON
@@ -29,6 +39,7 @@ FROM
 WHERE
   -- don't report the sys default type
   dt.itemtypenum > 0
+  AND ( dt.itemtypename LIKE 'HR%' OR dt.itemtypename LIKE 'INTL%' )
 GROUP BY
   '[' || lpad(dt.itemtypenum, 3, '0') || '] ' ||      trim(dt.itemtypename),
   '[' || lpad(dt.itemtypegroupnum, 3, '0') || '] ' || trim(itg.itemtypegroupname),
