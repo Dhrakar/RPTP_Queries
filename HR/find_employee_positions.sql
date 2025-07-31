@@ -22,7 +22,7 @@ SELECT DISTINCT
     ELSE 'ZZZ'
   END                         AS "Campus",
   org.title2                  AS "Cabinet",
-  org.title3                  AS "Unit",
+  org.title3                  AS "Unit", org.level4,
   org.title                   AS "Department",
   ua.pebempl_orgn_code_home   AS "Home dLevel", 
   ua.pebempl_orgn_code_dist   AS "Home TKL", 
@@ -108,14 +108,17 @@ SELECT DISTINCT
   boss.spriden_id             AS "Supervisor UA ID",
   boss.spriden_last_name 
     || ', ' 
-    || boss.spriden_first_name AS "Supervisor Name",
+    || coalesce (
+        bbio.spbpers_pref_first_name,
+        boss.spriden_first_name 
+       )                     AS "Supervisor Name",
   busr.gobtpac_external_user
-    || '@alaska.edu'           AS "Supervisor Email",
+    || '@alaska.edu'         AS "Supervisor Email",
   adr.spraddr_street_line1 || ', '
     || adr.spraddr_street_line2 || ', '
     || adr.spraddr_city || ', '
     || adr.spraddr_stat_code || ', '
-    || adr.spraddr_zip         AS "HR Address"
+    || adr.spraddr_zip       AS "HR Address"
 FROM
   -- start with the identity table
   SATURN.SPRIDEN emp
@@ -156,6 +159,10 @@ FROM
   LEFT JOIN SATURN.SPRIDEN boss  ON (
     boss.spriden_pidm = sup.ner2sup_sup_pidm
     AND boss.spriden_change_ind IS NULL
+  )
+  -- grab any preferred name for the supervisor (if any)
+  LEFT JOIN SATURN.SPBPERS bbio ON (
+    bbio.spbpers_pidm = sup.ner2sup_sup_pidm
   )
   -- grab the username info for the supervisor (also for email) (if any assigned)
   LEFT JOIN GENERAL.GOBTPAC busr ON (
