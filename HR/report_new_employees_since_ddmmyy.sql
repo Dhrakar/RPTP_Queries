@@ -20,7 +20,9 @@ SELECT
   usr.gobtpac_external_user 
     || '@alaska.edu'             AS "UA Email",
   pe.goremal_email_address       AS "Preferred Email",
-  adr.spraddr_city               AS "Mailing Address City", adr.spraddr_zip,
+  adr.spraddr_city               AS "Mailing Address City",
+  adr.spraddr_stat_code          AS "Mailing Address State",
+  adr.spraddr_zip                AS "Mailing Address ZIP",
   CASE
     WHEN substr(adr.spraddr_zip,1,5) IN (
       '99702',  -- Eielson AFB
@@ -63,7 +65,7 @@ SELECT
     ELSE 'New-Hire'
   END                            AS "Prev. Hired?",
   emp.pebempl_first_hire_date    AS "Original Hire Date",
-  -- emp.pebempl_current_hire_date  AS "Current Hire Date",
+  -- to_char(emp.pebempl_current_hire_date, 'YYYYMMDD')  AS "Current Hire Date",
   emp.nbrbjob_begin_date         AS "Position Start Date",
   emp.nbrbjob_end_date           AS "Position End Date"
 FROM 
@@ -93,13 +95,13 @@ WHERE
     --  uncomment to limit to the last 3 months
     -- SYSDATE - 90
     -- OR uncomment to use a specific start date
-      to_date('03/01/2025', 'mm/dd/yyyy')
+      to_date('06/12/2025', 'mm/dd/yyyy')
     -- 
     AND SYSDATE 
   -- do not include student employees or the old Adjunct categories
   AND emp.nbrjobs_ecls_code IN (
---    'A9', --'Faculty',
---    'AR', --'Faculty',
+--    'A9', --'No longer used',
+--    'AR', --'No longer used',
     'EX', --'Officers/Sr. Administrators',
     'F9', --'Faculty',
     'FN', --'Faculty',
