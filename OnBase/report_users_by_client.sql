@@ -75,7 +75,7 @@ FROM
   INNER JOIN HSI.USERACCOUNT usr ON 
     usr.usernum = slog.usernum
 WHERE
-  slog.logdate > to_date('01-JUN-2024', 'DD-MON-YYYY')
+  slog.logdate > to_date('01-JAN-2025', 'DD-MON-YYYY')
   -- don't include system accts
   AND slog.usernum > 1000
   -- don't include disabled accounts
