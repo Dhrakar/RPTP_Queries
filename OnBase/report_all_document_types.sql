@@ -39,7 +39,8 @@ FROM
 WHERE
   -- don't report the sys default type
   dt.itemtypenum > 0
-  AND ( dt.itemtypename LIKE 'HR%' OR dt.itemtypename LIKE 'INTL%' )
+  AND dt.itemtypename LIKE 'FIN%'
+  --AND ( dt.itemtypename LIKE 'HR%' OR dt.itemtypename LIKE 'INTL%' )
 GROUP BY
   '[' || lpad(dt.itemtypenum, 3, '0') || '] ' ||      trim(dt.itemtypename),
   '[' || lpad(dt.itemtypegroupnum, 3, '0') || '] ' || trim(itg.itemtypegroupname),
