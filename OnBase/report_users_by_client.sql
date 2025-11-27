@@ -65,11 +65,12 @@ SELECT
     20, 'POP Client',
     'Other: ' || slog.subactionnum
   )                            AS "OnBase Client",
-  LISTAGG ( DISTINCT
-    trim(usr.username), ', '
-  ) WITHIN GROUP (
-    ORDER BY usr.username
-  )                            AS "UA Users"
+--  LISTAGG ( DISTINCT
+--    trim(usr.username), ', '
+--  ) WITHIN GROUP (
+--    ORDER BY usr.username
+--  )                            AS "UA Users"
+  count(distinct trim(usr.username)) AS "# Users"
 FROM
   HSI.SECURITYLOG slog
   INNER JOIN HSI.USERACCOUNT usr ON 
@@ -87,7 +88,7 @@ WHERE
   -- don't include passwd failures
   AND slog.subactionnum != 7
   -- only include Classic clients
-  AND slog.subactionnum IN ( 1,2,10)
+  -- AND slog.subactionnum IN ( 1,2,10,12,15)
 GROUP BY
   decode (
     slog.subactionnum,
