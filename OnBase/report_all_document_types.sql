@@ -46,6 +46,5 @@ GROUP BY
   '[' || lpad(dt.itemtypegroupnum, 3, '0') || '] ' || trim(itg.itemtypegroupname),
   '[' || dt.diskgroupnum || '] ' ||     trim(dg.diskgroupname)
 ORDER BY
-  -- '[' || lpad(dt.itemtypegroupnum, 3, '0') || '] ' || trim(itg.itemtypegroupname),
-  '[' || lpad(dt.itemtypenum, 3, '0') || '] ' || trim(dt.itemtypename)
+  2,1
 ;
