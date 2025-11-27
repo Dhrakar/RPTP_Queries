@@ -6,10 +6,9 @@
 -- ============================================================
 SELECT
   emp.spriden_id           AS "UA ID",
-  NVL2(
+  coalesce (
     bio.spbpers_pref_first_name,
-    bio.spbpers_pref_first_name,
-    emp.spriden_first_name
+    emp.spriden_first_name 
   )                        AS "First Name",
   substr(emp.spriden_mi,0,1) AS "MI",
   emp.spriden_last_name    AS "Last Name",
@@ -30,8 +29,8 @@ FROM
   JOIN ftvorgn_levels org ON emp.pebempl_orgn_code_home = org.orgn_code
   JOIN GOBTPAC usr ON emp.spriden_pidm = usr.gobtpac_pidm
 WHERE
-  org.level1 = 'UAFTOT'
-  -- org.level2 = '5VCAS'
+  -- org.level1 = 'UAFTOT'
+  org.level2 = '5VCAS'
   AND emp.nbrjobs_ecls_code IN ( 
                                  'CR', 'CT', 
                                  'EX', 
