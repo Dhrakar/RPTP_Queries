@@ -12,7 +12,7 @@
 --  @param :bannerid -- UA Banner ID (ex; FNABC)
 --
 --  Included RPTP tables
---   SPRIDEN, GOBTPAC, GOBEACC, NBRBJOB, NBRJOBS, NER2SUP, NBRJLBD, FTVFUND, 
+--   SPRIDEN, GOBTPAC, GOBEACC, NBRBJOB, NBRJOBS, NBRJLBD, FTVFUND, 
 --   FTVORGN_LEVELS
 -- =============================================================================
 SELECT DISTINCT
@@ -103,8 +103,12 @@ SELECT DISTINCT
   pos.nbrjobs_orgn_code_ts    AS "Pos. TKL",
   pos.nbrjobs_desc            AS "Position Title",
   pos.nbrjobs_ecls_code       AS "Pos. Class",
+  pos.nbrjobs_sal_table       AS "Pos. Salary Table",
   pos.nbrjobs_fte             AS "Pos. FTE",
-  sup.ner2sup_effective_date  AS "Supervisor As Of",
+  nvl( -- if no supervisor change date, use most recent change date
+    to_char(chg.nbrjobs_effective_date, 'MM/DD/YYYY'),
+    to_char(pos.nbrjobs_effective_date, 'MM/DD/YYYY')
+  )                           AS "Supervisor As Of",
   boss.spriden_id             AS "Supervisor UA ID",
   boss.spriden_last_name 
     || ', ' 
@@ -148,25 +152,25 @@ FROM
     AND job.nbrbjob_posn = pos.nbrjobs_posn
     AND job.nbrbjob_suff = pos.nbrjobs_suff
   )
-  -- get information about this person's current UA supervisor (if any exist)
-  LEFT JOIN POSNCTL.NER2SUP sup  ON (
-        job.nbrbjob_pidm = sup.ner2sup_pidm
-    AND job.nbrbjob_posn = sup.ner2sup_posn
-    AND job.nbrbjob_suff = sup.ner2sup_suff
-    AND sup.ner2sup_sup_ind = 'Y'
+  -- get the effective date of the supervisor change (if any)
+  LEFT JOIN POSNCTL.NBRJOBS chg ON (
+        chg.nbrjobs_pidm = pos.nbrjobs_pidm
+    AND chg.nbrjobs_posn = pos.nbrjobs_posn
+    AND chg.nbrjobs_suff = pos.nbrjobs_suff
+    AND chg.nbrjobs_jcre_code = 'SPCHG'
   )
   -- grab identity info for the supervisor (if assigned)
   LEFT JOIN SATURN.SPRIDEN boss  ON (
-    boss.spriden_pidm = sup.ner2sup_sup_pidm
+    boss.spriden_pidm = pos.nbrjobs_supervisor_pidm
     AND boss.spriden_change_ind IS NULL
   )
   -- grab any preferred name for the supervisor (if any)
   LEFT JOIN SATURN.SPBPERS bbio ON (
-    bbio.spbpers_pidm = sup.ner2sup_sup_pidm
+    bbio.spbpers_pidm = boss.spriden_pidm
   )
   -- grab the username info for the supervisor (also for email) (if any assigned)
   LEFT JOIN GENERAL.GOBTPAC busr ON (
-    boss.spriden_pidm = busr.gobtpac_pidm
+    busr.gobtpac_pidm = boss.spriden_pidm
   )
   -- join with the labor distributions for thie persons positions (if any exist)
   LEFT JOIN POSNCTL.NBRJLBD dist ON ( 
@@ -203,7 +207,7 @@ WHERE
  OR ban.gobeacc_username = upper(:bannerid)
   )
   -- uncomment to only include currently active employees
-   -- AND ua.pebempl_empl_status != 'T'
+   AND ua.pebempl_empl_status != 'T'
   -- only include the current person records for the employee
   AND emp.spriden_change_ind IS NULL
   -- limit to the most current position (if exists)
@@ -219,6 +223,18 @@ WHERE
       )
     )
   )
+  -- find the most recent supervisor change (if any)
+  AND (
+    chg.nbrjobs_effective_date IS NULL 
+    OR chg.nbrjobs_effective_date = (
+    SELECT MAX(i.nbrjobs_effective_date)
+    FROM POSNCTL.NBRJOBS i
+    WHERE i.nbrjobs_pidm = pos.nbrjobs_pidm
+      AND i.nbrjobs_posn = pos.nbrjobs_posn
+      AND i.nbrjobs_suff = pos.nbrjobs_suff
+      AND i.nbrjobs_effective_date <= SYSDATE
+    )
+  )
   -- limit to the most current labor dist for this job (if exists)
   AND (
        dist.nbrjlbd_pidm IS NULL 
@@ -229,20 +245,6 @@ WHERE
             dist.nbrjlbd_pidm = dist2.nbrjlbd_pidm
         AND dist.nbrjlbd_posn = dist2.nbrjlbd_posn
         AND dist.nbrjlbd_suff = dist2.nbrjlbd_suff
-      )
-    )
-  )
-  -- limit to the most current supervisor record (if exists)
-  AND (
-       sup.ner2sup_pidm IS NULL 
-    OR sup.ner2sup_effective_date = (
-      SELECT MAX (sup2.ner2sup_effective_date)
-      FROM POSNCTL.NER2SUP sup2
-      WHERE (
-            sup2.ner2sup_sup_ind = 'Y'
-        AND sup.ner2sup_pidm = sup2.ner2sup_pidm
-        AND sup.ner2sup_posn = sup2.ner2sup_posn
-        AND sup.ner2sup_suff = sup2.ner2sup_suff
       )
     )
   )
