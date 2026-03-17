@@ -8,8 +8,9 @@ FROM
     usr.usernum = tlog.usernum
   )
 WHERE
-  usr.usernum = 4386 -- jbbutler
-  AND tlog.tmessage NOT LIKE '%Viewed%'
+  usr.usernum = 4504 
+  AND tlog.tmessage LIKE '%Termed%'
+  AND tlog.logdate >= to_date('01-JAN-2025', 'DD-MON-YYYY')
 ORDER BY 
   tlog.logdate DESC
 ;

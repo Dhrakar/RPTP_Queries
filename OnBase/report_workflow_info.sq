@@ -47,7 +47,7 @@ FROM
 WHERE
   a.logdate >= SYSDATE - 180
   AND b.username NOT LIKE '%(deactivated)%'
-  AND a.messagetext LIKE '%Client 20.3.33%'
+  AND a.messagetext LIKE '%Client 2%'
 GROUP BY
   a.usernum, 
   trim(b.username),

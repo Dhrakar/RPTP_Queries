@@ -28,6 +28,8 @@
 SELECT 
   rpad(username,15,' ') AS username,
   rpad(full_name,25, ' ') AS "Full Name",
+  login_status,
+  groups,
   last_login
 FROM (
 SELECT
@@ -79,8 +81,8 @@ ORDER BY
   login_status, username ASC
 )
 WHERE
-  instr(groups,'doctype.uaf.mou_moa') > 0
-  AND instr(groups,'user.doc.create') > 0
+  instr(groups,'doctype.finaid') > 0
+  -- AND instr(groups,'user.doc.create') > 0
 ORDER BY
-  username
+  login_status,username
 ;
