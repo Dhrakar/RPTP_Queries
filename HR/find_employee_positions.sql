@@ -4,7 +4,7 @@
 --
 --  This script will accept any of the following params
 --  @param :uaid     -- UA Employee/Student ID
---  @param :username -- UA Username
+--  @param :uaname   -- UA Username
 --  @param :pidm     -- Unique Banner numeric ID
 --  @param :uaemail  -- UA email address (eg; username@alaska.edu)
 --  @param :uatkl    -- All employees in that time keeping location
@@ -146,6 +146,8 @@ FROM
       OR job.nbrbjob_end_date IS NULL
     )
   )
+  -- get information about the position
+  -- INNER JOIN POSNCTL.NBBPOSN psn ON psn.nbbposn_posn = job.nbrbjob_posn 
   -- get information about this person's current UA position(s) (if any exist)
   LEFT JOIN POSNCTL.NBRJOBS pos  ON ( 
     job.nbrbjob_pidm = pos.nbrjobs_pidm
@@ -232,6 +234,7 @@ WHERE
     WHERE i.nbrjobs_pidm = pos.nbrjobs_pidm
       AND i.nbrjobs_posn = pos.nbrjobs_posn
       AND i.nbrjobs_suff = pos.nbrjobs_suff
+      AND i.nbrjobs_jcre_code = 'SPCHG'
       AND i.nbrjobs_effective_date <= SYSDATE
     )
   )
