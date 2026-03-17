@@ -70,71 +70,13 @@ WITH
           -- include full-time benefitted positions
           pos.nbrjobs_ecls_code IN ( 'EX', 'CR', 'NR', 'NX', 'XR', 'XX' )
           -- uncomment to include student positions
---          OR pos.nbrjobs_ecls_code IN ('SN','ST','GN','GT')
+          OR pos.nbrjobs_ecls_code IN ('SN','ST','GN','GT')
           -- uncomment to include faculty positions
---          OR pos.nbrjobs_ecls_code IN ('A9','AR','F9','FN','FR','FW') 
+          OR pos.nbrjobs_ecls_code IN ('A9','AR','F9','FN','FR','FW') 
           -- uncomment out to include temporary positions
---          OR pos.nbrjobs_ecls_code IN ('CT','FT','NT','XT')
+          OR pos.nbrjobs_ecls_code IN ('CT','FT','NT','XT')
       )
   ),
---  secondary_jobs AS (
---    -- creates a temp table of all of the secondary jobs that have been 
---    -- held by the current employees.  Note that only secondary jobs that
---    -- do not overlap with an existing primary job are counted.  That is:
---    --   <start> ... prim job ... <end>
---    -- If the start or end of the secondary job is between the start/end 
---    -- of any prim job, it is tossed.
---        SELECT
---          job.nbrbjob_pidm pidm,
---          job.nbrbjob_posn posn,
---          job.nbrbjob_suff suff,
---          job.nbrbjob_contract_type contract_type,
---          job.nbrbjob_begin_date                          AS begin_date,
---          -- if the job is ongoing, pick the last day of the CY as the end
---          coalesce( 
---            job.nbrbjob_end_date,
---            to_date('12/31/' || (:milestone_year), 'mm/dd/yyyy')
---          )                                               AS end_date,
---          (coalesce(job.nbrbjob_end_date,to_date('12/31/' || (:milestone_year), 'mm/dd/yyyy')) - job.nbrbjob_begin_date) AS span
---        FROM
---          -- start with table of all base job position
---          POSNCTL.NBRBJOB job
---          -- limit to just the current employees to keep the table size sane
---          INNER JOIN primary_jobs ON primary_jobs.pidm = job.nbrbjob_pidm
---          -- find the corresponding, current positions
---          INNER JOIN POSNCTL.NBRJOBS pos ON (
---                pos.nbrjobs_pidm = job.nbrbjob_pidm
---            AND pos.nbrjobs_posn = job.nbrbjob_posn
---            AND pos.nbrjobs_suff = job.nbrbjob_suff
---            AND pos.nbrjobs_effective_date = (
---              SELECT max(pos2.nbrjobs_effective_date)
---              FROM POSNCTL.NBRJOBS pos2
---              WHERE pos2.nbrjobs_pidm = job.nbrbjob_pidm
---                AND pos2.nbrjobs_posn = job.nbrbjob_posn
---                AND pos2.nbrjobs_suff = job.nbrbjob_suff
---                -- filter out any updates from past the milestone date
---                AND pos2.nbrjobs_effective_date <= to_date('12/31/' || (:milestone_year), 'mm/dd/yyyy')
---            )
---          )
---        WHERE
---          -- limit to just secondary jobs
---          job.nbrbjob_contract_type = 'S'
---          -- limit to just the uncomented types of past positions
---          AND pos.nbrjobs_ecls_code IN ( 'EX', 'CR', 'NR', 'NX', 'XR', 'XX' )
---          -- limit to non-overlap with primary
---          AND 
---            (
---              (
---                     job.nbrbjob_begin_date < primary_jobs.begin_date
---                 AND job.nbrbjob_end_date < primary_jobs.begin_date
---              )
---            OR 
---              (
---                     job.nbrbjob_begin_date > primary_jobs.end_date
---                 AND job.nbrbjob_end_date > primary_jobs.end_date
---              )
---            )
---  ),
   prim_days AS (
     -- build a temp table of the day spans for each job. A temp table saves
     -- needing to do a bunch of groups for the final select
@@ -149,21 +91,6 @@ WITH
     GROUP BY
       a.pidm
   )
---  ,
---  sec_days AS (
---    -- build a temp table of the day spans for each job. A temp table saves
---    -- needing to do a bunch of groups for the final select
---    SELECT
---      a.pidm      AS pidm,
---      -- total days of the eligible positions
---      sum(
---        (a.end_date - a.begin_date)
---      )           AS days
---    FROM 
---      secondary_jobs a 
---    GROUP BY
---      a.pidm
---  )
 SELECT DISTINCT
   to_date(
     '31-DEC-' || :milestone_year, 
@@ -240,20 +167,12 @@ SELECT DISTINCT
     ( to_date('12/31/' || (:milestone_year), 'mm/dd/yyyy') 
     - emp.adj_service
     ) / 365.25
-  )                                    AS "HR Adj. Years",  
---  floor(
---    -- Coalesce is needed for the cases of no secondary jobs (NULLs don't cooperate for math)
---    (coalesce((select days from sec_days where sec_days.pidm = emp.pidm),0)) / 365.25
---  )                                    AS "Sec. Posn Serv. Years", 
+  )                                    AS "HR Adj. Years",                                    AS "Sec. Posn Serv. Years", 
   round( 
     greatest( 
       (to_date('01/01/1996', 'mm/dd/yyyy') - emp.orig_hire),0
     ) / 365.25, 1
   )                                    AS "Pre-Banner Serv. Years",
---  primary_jobs.*,
---  secondary_jobs.*,
---  (select days from prim_days where prim_days.pidm = emp.pidm) as days_primary_jobs,
---  (select days from sec_days where sec_days.pidm = emp.pidm) as days_sec_jobs,
   round(
     (prim_days.days / 365.25), 1
   )                                    AS "Elig. Service Years",
@@ -278,10 +197,6 @@ FROM
   INNER JOIN prim_days ON (
     prim_days.pidm = emp.pidm
   )
---  -- collect the secondary position timespans (for testing)
---  INNER JOIN secondary_jobs ON (
---    secondary_jobs.pidm = emp.pidm
---  )
   -- get the demographic data
   INNER JOIN SATURN.SPBPERS bio ON (
     bio.spbpers_pidm = emp.pidm
@@ -331,8 +246,6 @@ WHERE
         AND a2.spraddr_atyp_code = 'MA'
     )
   )
-  -- uncomment for testing.
---  AND emp.uaid IN ('30006857', '30008435', '30023250')
 ORDER BY
   dsduaf.f_decode$orgn_campus(org.level1), -- campus
   2, -- milestone flag         
