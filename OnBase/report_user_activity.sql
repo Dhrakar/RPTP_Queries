@@ -2,9 +2,9 @@
 -- Shows all activity for the requested user
 -- ====================================================
 -- 2279 - Derek
--- 4504 - Shiva
+-- 4522 - Derek Admin
 SELECT
-  to_char(tlog.logdate, 'MON/YYYY') AS "Log Date",
+  to_char(tlog.logdate, 'YYYYMM') AS "Log Date",
   trim(usr.realname) 
     || ' [' 
     || trim(usr.username)
@@ -12,11 +12,12 @@ SELECT
   CASE
     WHEN tlog.actionnum = 1 THEN 'Document: '
      || DECODE (
-          tlog.subactionnum,
+         tlog.subactionnum,
           1, 'Created',
           2, 'Created',
           3, 'Deleted',
-          ' '
+         13, 'Document Separation',
+          tlog.subactionnum
         )
     WHEN tlog.actionnum = 2 THEN 'Folder: ' || tlog.subactionnum
     WHEN tlog.actionnum = 3 THEN 'Note: '
@@ -36,7 +37,8 @@ SELECT
            3, 'Mailed',
            4, 'Re-Indexed',
            8, 'Revised',
-          16, 'Added Pages',
+          14, 'Deleted Page(s)',
+          16, 'Added Page(s)',
           tlog.subactionnum
         )
     WHEN tlog.actionnum = 5 THEN 'Keywords: '
@@ -45,7 +47,15 @@ SELECT
            1, 'Viewed',
            'Updated'
         )
-    WHEN tlog.actionnum = 6 THEN 'Misc: ' || tlog.subactionnum
+    WHEN tlog.actionnum = 6 THEN 'Misc: '  
+     || DECODE (
+          tlog.subactionnum,
+           3, 'Copy Text to Clipboard',
+          26, 'Force Delete Retaind Doc',
+          53, 'Database Records Created',
+          54, 'Documents Moved Diskgroup',
+          tlog.subactionnum
+        )
     ELSE 'Unknown'
   END                    AS "Actions", 
   trim(dtyp.itemtypename)  AS "Document Type",
@@ -68,7 +78,7 @@ WHERE
     OR UPPER(usr.username) = UPPER(:username)
   )
 GROUP BY
-  to_char(tlog.logdate, 'MON/YYYY'),
+  to_char(tlog.logdate, 'YYYYMM'),
   trim(usr.realname) 
     || ' [' 
     || trim(usr.username)
@@ -76,16 +86,17 @@ GROUP BY
   CASE
     WHEN tlog.actionnum = 1 THEN 'Document: '
      || DECODE (
-          tlog.subactionnum,
+         tlog.subactionnum,
           1, 'Created',
           2, 'Created',
           3, 'Deleted',
-          ' '
+         13, 'Document Separation',
+        tlog.subactionnum
         )
     WHEN tlog.actionnum = 2 THEN 'Folder: ' || tlog.subactionnum
     WHEN tlog.actionnum = 3 THEN 'Note: '
      || DECODE (
-          tlog.subactionnum,
+         tlog.subactionnum,
            1, 'Created',
            2, 'Viewed',
            3, 'Deleted',
@@ -94,26 +105,35 @@ GROUP BY
         )
     WHEN tlog.actionnum = 4 THEN 'Document: '
      || DECODE (
-          tlog.subactionnum,
+         tlog.subactionnum,
            1, 'Viewed',
            2, 'Printed',
            3, 'Mailed',
            4, 'Re-Indexed',
            8, 'Revised',
-          16, 'Added Pages',
+          14, 'Deleted Page(s)',
+          16, 'Added Page(s)',
           tlog.subactionnum
         )
     WHEN tlog.actionnum = 5 THEN 'Keywords: '
      || DECODE (
-          tlog.subactionnum,
+         tlog.subactionnum,
            1, 'Viewed',
            'Updated'
         )
-    WHEN tlog.actionnum = 6 THEN 'Misc: ' || tlog.subactionnum
+    WHEN tlog.actionnum = 6 THEN 'Misc: '  
+     || DECODE (
+         tlog.subactionnum,
+           3, 'Copy Text to Clipboard',
+          26, 'Force Delete Retaind Doc',
+          53, 'Database Records Created',
+          54, 'Documents Moved Diskgroup',
+          tlog.subactionnum
+        )
     ELSE 'Unknown'
   END,
   trim(dtyp.itemtypename)
 ORDER BY
-  to_char(tlog.logdate, 'MON/YYYY') DESC,
+  to_char(tlog.logdate, 'YYYYMM') DESC,
   trim(dtyp.itemtypename)
 ;

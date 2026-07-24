@@ -39,7 +39,7 @@ FROM
 WHERE
   -- don't report the sys default type
   dt.itemtypenum > 0
-  AND dt.itemtypename LIKE 'FIN%'
+  -- AND dt.itemtypename LIKE 'FIN%'
   --AND ( dt.itemtypename LIKE 'HR%' OR dt.itemtypename LIKE 'INTL%' )
 GROUP BY
   '[' || lpad(dt.itemtypenum, 3, '0') || '] ' ||      trim(dt.itemtypename),
@@ -47,4 +47,16 @@ GROUP BY
   '[' || dt.diskgroupnum || '] ' ||     trim(dg.diskgroupname)
 ORDER BY
   2,1
+;
+
+-- // Just doc types and IDs for use in the JSON report file
+SELECT
+  dt.itemtypenum        AS "Doc Type ID",
+  trim(dt.itemtypename) AS "Doc Type"
+FROM
+  HSI.DOCTYPE dt
+WHERE
+  dt.itemtypenum > 0
+ORDER BY
+  dt.itemtypenum
 ;

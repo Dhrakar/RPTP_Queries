@@ -32,9 +32,9 @@ WITH
 --      'A9', --'Faculty'
 --      'AR', --'Faculty'
       'EX', --'Officers/Sr. Administrators'
---      'F9', --'Faculty'
+      'F9', --'Faculty'
 --      'FN', --'Faculty'
---      'FR', --'Officers/Sr. Administrators'
+      'FR', --'Officers/Sr. Administrators'
 --      'FT', --'Adjunct Faculty'
 --      'FW', --'Adjunct Faculty'
       'CR', --'Staff'
@@ -168,7 +168,7 @@ WHERE
   -- only primary positions
   emp.nbrbjob_contract_type = 'P'
   -- only the eligible staffers
-  AND emp.nbrjobs_ecls_code IN ('NR','NX','XR','XX','EX')
+  AND emp.nbrjobs_ecls_code IN ('NR','NX','XR','XX','EX', 'F9')
   -- only UAF or NULL for the campus org
   AND ( 
        org.level1 IS NULL
@@ -209,4 +209,57 @@ ORDER BY
   org.title3,                         -- unit
   org.title,                          -- department
   emp.spriden_id                      -- employee
+;
+ worked AS (
+  SELECT
+    pos.nbrbjob_pidm AS pidm,
+    -- build sum of all days working in an eligible position
+    SUM (
+      -- get the number of days that this position lasted
+      CASE
+        WHEN pos.nbrbjob_end_date IS NULL THEN to_date('12/31/' || (:srdd_year - 1), 'mm/dd/yyyy') - pos.nbrbjob_begin_date
+        ELSE pos.nbrbjob_end_date - pos.nbrbjob_begin_date
+      END 
+    ) AS span 
+  FROM
+    POSNCTL.NBRBJOB pos
+    -- add the position info for ecls
+    JOIN POSNCTL.NBBPOSN rec ON (
+      pos.nbrbjob_posn = rec.nbbposn_posn
+      -- just get the pos that are eligible for longevity recognition
+      AND rec.nbbposn_ecls_code IN (
+--      'A9', --'Faculty'
+--      'AR', --'Faculty'
+      'EX', --'Officers/Sr. Administrators'
+      'F9', --'Faculty'
+--      'FN', --'Faculty'
+      'FR', --'Officers/Sr. Administrators'
+--      'FT', --'Adjunct Faculty'
+--      'FW', --'Adjunct Faculty'
+      'CR', --'Staff'
+--      'CT', --'Staff'
+      'NR', --'Staff'
+--      'NT', --'Staff'
+      'NX', --'Staff'
+      'XR', --'Staff'
+--      'XT', --'Staff'
+      'XX', --'Staff'
+      'GN', --'Student'
+      'GT', --'Student'
+      'SN', --'Student'
+      'ST', --'Student'
+    '00' -- dummy value to keep from futzing with the trailing comma when commenting/uncommenting
+  )
+    )
+  WHERE
+    -- only include the Primary positions
+    pos.nbrbjob_contract_type = 'P'
+    -- grab all the positions that have no end date, or are have already started
+    AND (
+      pos.nbrbjob_end_date IS NULL
+      OR pos.nbrbjob_begin_date < to_date('12/31/' || (:srdd_year - 1), 'mm/dd/yyyy')
+    )
+  GROUP BY
+    pos.nbrbjob_pidm
+  
 ;

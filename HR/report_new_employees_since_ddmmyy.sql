@@ -55,11 +55,31 @@ SELECT
   org.title3                     AS "Unit",
   org.title                      AS "Department",
   emp.nbrjobs_ecls_code
-    || '-' || (
-      SELECT a.ptrecls_long_desc 
-      FROM PAYROLL.PTRECLS a 
-      WHERE a.ptrecls_code = emp.nbrjobs_ecls_code 
-    )                            AS "Employee Class",
+    || '-' 
+    || CASE
+          WHEN emp.nbrjobs_ecls_code LIKE 'N%' THEN 'Non Exempt Staff'
+          WHEN emp.nbrjobs_ecls_code LIKE 'X%' THEN 'Exempt Staff'
+          WHEN emp.nbrjobs_ecls_code LIKE 'C%' THEN 'Crafts / Trades'
+          WHEN emp.nbrjobs_ecls_code IN ('FR', 'EX') THEN 'Exec / Admin'
+          WHEN emp.nbrjobs_ecls_code LIKE 'F%' THEN 'Faculty'
+          ELSE ' '
+        END                      AS "Employee Class",
+  (
+    SELECT 
+      DECODE (
+        nbbposn_barg_code,
+        'AC', 'UNAC - Rep Faculty',
+        'AD', 'UNAD - Rep Adjuncts', 
+        'AG', 'AGWA - Rep Grad Workers',
+        'CS', 'CAUSE - Rep Staff',
+        'FF', 'IAFF - Rep Firefighters',
+        'L6', 'L6070 - Rep Crafts/Trades', 
+        'NB', 'Non-Represented',
+        'Not Specified' 
+      ) AS unit
+    FROM POSNCTL.NBBPOSN
+    WHERE nbbposn_posn = emp.nbrbjob_posn
+  )                           AS "Bargaining Unit",
   CASE 
     WHEN emp.pebempl_first_hire_date < emp.pebempl_current_hire_date THEN 'Re-Hire'
     ELSE 'New-Hire'
@@ -95,7 +115,7 @@ WHERE
     --  uncomment to limit to the last 3 months
     -- SYSDATE - 90
     -- OR uncomment to use a specific start date
-      to_date('06/12/2025', 'mm/dd/yyyy')
+      to_date('05/21/2026', 'mm/dd/yyyy')
     -- 
     AND SYSDATE 
   -- do not include student employees or the old Adjunct categories
