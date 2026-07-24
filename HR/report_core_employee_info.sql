@@ -36,7 +36,9 @@ employee_base AS (
     emp.spriden_id            AS uaid,
     usr.gobtpac_external_user AS uaname,
     ban.gobeacc_username      AS bannerid,
-    emp.spriden_last_name || ', ' || coalesce(bio.spbpers_pref_first_name, emp.spriden_first_name) AS full_name,
+    emp.spriden_last_name || ', ' 
+      || coalesce(bio.spbpers_pref_first_name, emp.spriden_first_name) || ' ' 
+      || substr(emp.spriden_mi,1,1) AS full_name,
     usr.gobtpac_external_user || '@alaska.edu' AS email,
     ua.pebempl_orgn_code_home AS dlevel,
     ua.pebempl_orgn_code_dist AS tkl,
@@ -76,7 +78,7 @@ employee_base AS (
     INNER JOIN GENERAL.GOBTPAC usr ON emp.spriden_pidm = usr.gobtpac_pidm
     LEFT JOIN GENERAL.GOBEACC ban  ON emp.spriden_pidm = ban.gobeacc_pidm
     WHERE emp.spriden_change_ind IS NULL
-      AND ua.pebempl_empl_status != 'T'
+      -- AND ua.pebempl_empl_status != 'T'
       AND ( 
           emp.spriden_id            = trim(:uaid) 
        OR emp.spriden_pidm          = trim(:pidm)
@@ -159,6 +161,7 @@ employee_base AS (
     WHERE a.spriden_change_ind IS NULL
   )
 SELECT
+  core.status                 AS "UA Job Status",
   CASE
     WHEN org.level1 = 'UATKL' THEN 'TKL!'
     WHEN org.level1 LIKE '%TOT' THEN substr(org.level1, 0, length(org.level1) - 3)
@@ -168,15 +171,17 @@ SELECT
   org.title3                  AS "Unit", 
   org.title                   AS "Department",
   core.dlevel                 AS "Home dLevel", 
-  core.tkl                    AS "Home TKL", 
+  core.tkl                    AS "Home TKL",  
+--  dsduaf.f_sc_units(
+--    org.level3
+--  )                           AS "SC Unit",
+  core.pidm                   AS "Banner #",
   core.uaid                   AS "UA ID",
   core.uaname                 AS "UA Username",
   core.email                  AS "UA Email Address",
-  core.pidm                   AS "Banner #",
   core.bannerid               AS "Banner ID",
   core.full_name              AS "Full Name",
   core.gender                 AS "Gender",
-  core.status                 AS "UA Job Status",
   DECODE (
     -- show contract type or '-' if terminated 
     job.nbrbjob_contract_type,
@@ -193,7 +198,23 @@ SELECT
   pos.nbrjobs_orgn_code_ts    AS "Pos. TKL",
   pos.nbrjobs_desc            AS "Position Title",
   pos.nbrjobs_ecls_code       AS "Pos. Class",
-  pos.nbrjobs_sal_table       AS "Pos. Salary Table",
+  -- pos.nbrjobs_sal_table       AS "Pos. Salary Table",
+  (
+    SELECT 
+      DECODE (
+        nbbposn_barg_code,
+        'AC', 'UNAC - Rep Faculty',
+        'AD', 'UNAD - Rep Adjuncts', 
+        'AG', 'AGWA - Rep Grad Workers',
+        'CS', 'CAUSE - Rep Staff',
+        'FF', 'IAFF - Rep Firefighters',
+        'L6', 'L6070 - Rep Crafts/Trades', 
+        'NB', 'Non-Represented',
+        '?? - ' || nbbposn_barg_code
+      ) AS unit
+    FROM POSNCTL.NBBPOSN
+    WHERE nbbposn_posn = job.nbrbjob_posn
+  )                           AS "Bargaining Unit",
   pos.nbrjobs_fte             AS "Pos. FTE",
   dist.nbrjlbd_percent        AS "Labor %",
   dist.nbrjlbd_fund_code 
@@ -216,6 +237,7 @@ SELECT
   )                           AS "Supervisor As Of",
   boss.name                   AS "Supervisor Name",
   boss.email                  AS "Supervisor Email",
+  tss.nbrrjqe_appr_pidm AS "Timesheet Approver",
   adr.spraddr_street_line1 || ', '
     || adr.spraddr_street_line2 || ', '
     || adr.spraddr_city || ', '
@@ -264,6 +286,12 @@ FROM
     AND schg.nbrjobs_posn = pos.nbrjobs_posn
     AND schg.nbrjobs_suff = pos.nbrjobs_suff
     AND schg.row_no = 1
+  )
+  -- get the timesheet approver (if any)
+  LEFT JOIN posnctl.nbrrjqe tss ON (
+        tss.nbrrjqe_pidm = pos.nbrjobs_pidm
+    AND tss.nbrrjqe_posn = pos.nbrjobs_posn
+    --AND tss.nbrrjqe_suff = pos.nbrjobs_suff
   )
   -- grap HR address (if any)
   LEFT JOIN ranked_address adr ON (
