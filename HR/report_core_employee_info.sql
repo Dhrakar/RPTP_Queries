@@ -78,7 +78,6 @@ employee_base AS (
     INNER JOIN GENERAL.GOBTPAC usr ON emp.spriden_pidm = usr.gobtpac_pidm
     LEFT JOIN GENERAL.GOBEACC ban  ON emp.spriden_pidm = ban.gobeacc_pidm
     WHERE emp.spriden_change_ind IS NULL
-      -- AND ua.pebempl_empl_status != 'T'
       AND ( 
           emp.spriden_id            = trim(:uaid) 
        OR emp.spriden_pidm          = trim(:pidm)
@@ -100,7 +99,8 @@ employee_base AS (
     FROM POSNCTL.NBRJOBS a
     WHERE 
       -- only include currently active positions
-      a.nbrjobs_status = 'A'
+          a.nbrjobs_status = 'A'
+      AND a.nbrjobs_effective_date <= SYSDATE
       -- limit the rows of positions to just the employees in the temp table
       AND a.nbrjobs_pidm IN ( SELECT pidm FROM employee_base )
   ),
