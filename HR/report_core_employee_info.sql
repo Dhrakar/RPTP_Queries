@@ -159,153 +159,160 @@ employee_base AS (
       INNER JOIN SATURN.SPBPERS b ON a.spriden_pidm = b.spbpers_pidm
       INNER JOIN GENERAL.GOBTPAC c ON a.spriden_pidm = c.gobtpac_pidm
     WHERE a.spriden_change_ind IS NULL
-  )
-SELECT
-  core.status                 AS "UA Job Status",
-  CASE
-    WHEN org.level1 = 'UATKL' THEN 'TKL!'
-    WHEN org.level1 LIKE '%TOT' THEN substr(org.level1, 0, length(org.level1) - 3)
-    ELSE 'ERR!'
-  END                         AS "Campus",
-  org.title2                  AS "Cabinet",
-  org.title3                  AS "Unit", 
-  org.title                   AS "Department",
-  core.dlevel                 AS "Home dLevel", 
-  core.tkl                    AS "Home TKL",  
---  dsduaf.f_sc_units(
---    org.level3
---  )                           AS "SC Unit",
-  core.pidm                   AS "Banner #",
-  core.uaid                   AS "UA ID",
-  core.uaname                 AS "UA Username",
-  core.email                  AS "UA Email Address",
-  core.bannerid               AS "Banner ID",
-  core.full_name              AS "Full Name",
-  core.gender                 AS "Gender",
-  DECODE (
-    -- show contract type or '-' if terminated 
-    job.nbrbjob_contract_type,
-    'P', '1 Primary',
-    'S', '2 Secondary',
-    'O', '3 Overload',
-    '-'
-  )                           AS "Contract Type",
-  job.nbrbjob_begin_date      AS "Contract Start",
-  job.nbrbjob_end_date        AS "Contract End",
-  job.nbrbjob_posn 
-    || '/' 
-    || job.nbrbjob_suff       AS "Position",
-  pos.nbrjobs_orgn_code_ts    AS "Pos. TKL",
-  pos.nbrjobs_desc            AS "Position Title",
-  pos.nbrjobs_ecls_code       AS "Pos. Class",
-  -- pos.nbrjobs_sal_table       AS "Pos. Salary Table",
-  (
-    SELECT 
-      DECODE (
-        nbbposn_barg_code,
-        'AC', 'UNAC - Rep Faculty',
-        'AD', 'UNAD - Rep Adjuncts', 
-        'AG', 'AGWA - Rep Grad Workers',
-        'CS', 'CAUSE - Rep Staff',
-        'FF', 'IAFF - Rep Firefighters',
-        'L6', 'L6070 - Rep Crafts/Trades', 
-        'NB', 'Non-Represented',
-        '?? - ' || nbbposn_barg_code
-      ) AS unit
-    FROM POSNCTL.NBBPOSN
-    WHERE nbbposn_posn = job.nbrbjob_posn
-  )                           AS "Bargaining Unit",
-  pos.nbrjobs_fte             AS "Pos. FTE",
-  dist.nbrjlbd_percent        AS "Labor %",
-  dist.nbrjlbd_fund_code 
-    || '/'
-    || dist.nbrjlbd_orgn_code AS "Labor Fund/Org",
-  CASE
-    -- walk the orgs to see where the dlevel is at
-    WHEN dist.level7 LIKE 'D%' THEN dist.level7
-    WHEN dist.level6 LIKE 'D%' THEN dist.level6
-    WHEN dist.level5 LIKE 'D%' THEN dist.level5
-    WHEN dist.level4 LIKE 'D%' THEN dist.level4   
-    WHEN dist.level3 LIKE 'D%' THEN dist.level3 
-    ELSE 'D?'
-  END                         AS "Labor dLevel",
-  dist.ftvfund_ftyp_code      AS "Labor Fund Type",
-  boss.uaid                   AS "Supervisor UA ID",
-  nvl( -- if no supervisor change date, use most recent change date
-    to_char(schg.nbrjobs_effective_date, 'MM/DD/YYYY'),
-    to_char(pos.nbrjobs_effective_date, 'MM/DD/YYYY')
-  )                           AS "Supervisor As Of",
-  boss.name                   AS "Supervisor Name",
-  boss.email                  AS "Supervisor Email",
-  tss.nbrrjqe_appr_pidm AS "Timesheet Approver",
-  adr.spraddr_street_line1 || ', '
-    || adr.spraddr_street_line2 || ', '
-    || adr.spraddr_city || ', '
-    || adr.spraddr_stat_code || ', '
-    || adr.spraddr_zip       AS "HR Address"
-FROM
-  -- start with the core employee info
-  employee_base core
-  -- join to find the org hierarchy for this person's department (if assigned)
-  LEFT JOIN REPORTS.FTVORGN_LEVELS org ON (
-    org.orgn_code = core.dlevel
-  )
-  -- get information about this person's current base UA job (if it exists)
-  LEFT JOIN POSNCTL.NBRBJOB job  ON (
-        job.nbrbjob_pidm = core.pidm
-    -- uncomment to limit to just current primary position
-    -- AND job.nbrbjob_contract_type = 'P'
-    -- -----------------------------------
-    AND job.nbrbjob_begin_date <= CURRENT_DATE
-    AND ( 
-         job.nbrbjob_end_date >= CURRENT_DATE 
-      OR job.nbrbjob_end_date IS NULL
-    )
-  )
-  -- join in the windowed positions (use ranking to get current one)
-  LEFT JOIN ranked_positions pos ON (
-        pos.nbrjobs_pidm = core.pidm
-    AND pos.nbrjobs_posn = job.nbrbjob_posn
-    AND pos.nbrjobs_suff = job.nbrbjob_suff
-    AND pos.row_no = 1
-  )
-  -- join in the windowed labor (use ranking to get current one)
-  LEFT JOIN ranked_labor dist ON (
-        dist.nbrjlbd_pidm = core.pidm
-    AND dist.nbrjlbd_posn = pos.nbrjobs_posn
-    AND dist.nbrjlbd_suff = pos.nbrjobs_suff
-    AND dist.row_no = 1
-  ) 
-  -- grab identity info for the supervisor (if assigned)
-  LEFT JOIN supervisor_info boss  ON (
-    boss.pidm = pos.nbrjobs_supervisor_pidm
-  )
-  -- grab the last change date for the supervisor (if any)
-  LEFT JOIN ranked_supervisor_date schg ON (
-        schg.nbrjobs_pidm = pos.nbrjobs_pidm
-    AND schg.nbrjobs_posn = pos.nbrjobs_posn
-    AND schg.nbrjobs_suff = pos.nbrjobs_suff
-    AND schg.row_no = 1
-  )
-  -- get the timesheet approver (if any)
-  LEFT JOIN posnctl.nbrrjqe tss ON (
-        tss.nbrrjqe_pidm = pos.nbrjobs_pidm
-    AND tss.nbrrjqe_posn = pos.nbrjobs_posn
-    --AND tss.nbrrjqe_suff = pos.nbrjobs_suff
-  )
-  -- grap HR address (if any)
-  LEFT JOIN ranked_address adr ON (
-        adr.spraddr_pidm = core.pidm
-    AND adr.row_no = 1
-  )
-ORDER BY
-  core.uaid,
-  DECODE (
-    job.nbrbjob_contract_type,
-    'P', '1 Primary',
-    'S', '2 Secondary',
-    'O', '3 Overload',
-    '-'
   ),
-  dist.nbrjlbd_percent DESC
+  main_query AS (
+    SELECT
+      core.status                 AS "UA Job Status",
+      CASE
+        WHEN org.level1 = 'UATKL' THEN 'TKL!'
+        WHEN org.level1 LIKE '%TOT' THEN substr(org.level1, 0, length(org.level1) - 3)
+        ELSE 'ERR!'
+      END                         AS "Campus",
+      org.title2                  AS "Cabinet",
+      org.title3                  AS "Unit", 
+      org.title                   AS "Department",
+      core.dlevel                 AS "Home dLevel", 
+      core.tkl                    AS "Home TKL",  
+      core.pidm                   AS "Banner #",
+      core.uaid                   AS "UA ID",
+      core.uaname                 AS "UA Username",
+      core.email                  AS "UA Email Address",
+      core.bannerid               AS "Banner ID",
+      core.full_name              AS "Full Name",
+      core.gender                 AS "Gender",
+      DECODE (
+        -- show contract type or '-' if terminated 
+        job.nbrbjob_contract_type,
+        'P', '1 Primary',
+        'S', '2 Secondary',
+        'O', '3 Overload',
+        '-'
+      )                           AS "Contract Type",
+      job.nbrbjob_begin_date      AS "Contract Start",
+      job.nbrbjob_end_date        AS "Contract End",
+      job.nbrbjob_posn 
+        || '/' 
+        || job.nbrbjob_suff       AS "Position",
+      pos.nbrjobs_orgn_code_ts    AS "Pos. TKL",
+      pos.nbrjobs_desc            AS "Position Title",
+      pos.nbrjobs_ecls_code       AS "Pos. Class",
+      (
+        SELECT 
+          DECODE (
+            nbbposn_barg_code,
+            'AC', 'UNAC - Rep Faculty',
+            'AD', 'UNAD - Rep Adjuncts', 
+            'AG', 'AGWA - Rep Grad Workers',
+            'CS', 'CAUSE - Rep Staff',
+            'FF', 'IAFF - Rep Firefighters',
+            'L6', 'L6070 - Rep Crafts/Trades', 
+            'NB', 'Non-Represented',
+            '?? - ' || nbbposn_barg_code
+          ) AS unit
+        FROM POSNCTL.NBBPOSN
+        WHERE nbbposn_posn = job.nbrbjob_posn
+      )                           AS "Bargaining Unit",
+      pos.nbrjobs_fte             AS "Pos. FTE",
+      dist.nbrjlbd_percent        AS "Labor %",
+      dist.nbrjlbd_fund_code 
+        || '/'
+        || dist.nbrjlbd_orgn_code AS "Labor Fund/Org",
+      CASE
+        -- walk the orgs to see where the dlevel is at
+        WHEN dist.level7 LIKE 'D%' THEN dist.level7
+        WHEN dist.level6 LIKE 'D%' THEN dist.level6
+        WHEN dist.level5 LIKE 'D%' THEN dist.level5
+        WHEN dist.level4 LIKE 'D%' THEN dist.level4   
+        WHEN dist.level3 LIKE 'D%' THEN dist.level3 
+        ELSE 'D?'
+      END                         AS "Labor dLevel",
+      dist.ftvfund_ftyp_code      AS "Labor Fund Type",
+      boss.uaid                   AS "Supervisor UA ID",
+      nvl( -- if no supervisor change date, use most recent change date
+        to_char(schg.nbrjobs_effective_date, 'MM/DD/YYYY'),
+        to_char(pos.nbrjobs_effective_date, 'MM/DD/YYYY')
+      )                           AS "Supervisor As Of",
+      boss.name                   AS "Supervisor Name",
+      boss.email                  AS "Supervisor Email",
+      tss.nbrrjqe_appr_pidm       AS "Timesheet Approver",
+      adr.spraddr_street_line1 || ', '
+        || adr.spraddr_street_line2 || ', '
+        || adr.spraddr_city || ', '
+        || adr.spraddr_stat_code || ', '
+        || adr.spraddr_zip       AS "HR Address"
+    FROM
+      -- start with the core employee info
+      employee_base core
+      -- join to find the org hierarchy for this person's department (if assigned)
+      LEFT JOIN REPORTS.FTVORGN_LEVELS org ON (
+        org.orgn_code = core.dlevel
+      )
+      -- get information about this person's current base UA job (if it exists)
+      LEFT JOIN POSNCTL.NBRBJOB job  ON (
+            job.nbrbjob_pidm = core.pidm
+        AND job.nbrbjob_begin_date <= CURRENT_DATE
+        AND ( 
+             job.nbrbjob_end_date >= CURRENT_DATE 
+          OR job.nbrbjob_end_date IS NULL
+        )
+      )
+      -- join in the windowed positions (use ranking to get current one)
+      LEFT JOIN ranked_positions pos ON (
+            pos.nbrjobs_pidm = core.pidm
+        AND pos.nbrjobs_posn = job.nbrbjob_posn
+        AND pos.nbrjobs_suff = job.nbrbjob_suff
+        AND pos.row_no = 1
+      )
+      -- join in the windowed labor (use ranking to get current one)
+      LEFT JOIN ranked_labor dist ON (
+            dist.nbrjlbd_pidm = core.pidm
+        AND dist.nbrjlbd_posn = pos.nbrjobs_posn
+        AND dist.nbrjlbd_suff = pos.nbrjobs_suff
+        AND dist.row_no = 1
+      ) 
+      -- grab identity info for the supervisor (if assigned)
+      LEFT JOIN supervisor_info boss  ON (
+        boss.pidm = pos.nbrjobs_supervisor_pidm
+      )
+      -- grab the last change date for the supervisor (if any)
+      LEFT JOIN ranked_supervisor_date schg ON (
+            schg.nbrjobs_pidm = pos.nbrjobs_pidm
+        AND schg.nbrjobs_posn = pos.nbrjobs_posn
+        AND schg.nbrjobs_suff = pos.nbrjobs_suff
+        AND schg.row_no = 1
+      )
+      -- get the timesheet approver (if any)
+      LEFT JOIN posnctl.nbrrjqe tss ON (
+            tss.nbrrjqe_pidm = pos.nbrjobs_pidm
+        AND tss.nbrrjqe_posn = pos.nbrjobs_posn
+        --AND tss.nbrrjqe_suff = pos.nbrjobs_suff
+      )
+      -- grap HR address (if any)
+      LEFT JOIN ranked_address adr ON (
+            adr.spraddr_pidm = core.pidm
+        AND adr.row_no = 1
+      )
+  )
+SELECT 
+  * 
+FROM
+  main_query
+WHERE
+  -- Returns ALL jobs (Active, Terminated, Primary, Secondary, Overload).
+    ( 
+          trim(:uatkl) IS NULL 
+      AND trim(:uadlevel) IS NULL 
+    )
+  OR -- Strictly filters down to Active, Primary, On-Contract positions.
+    (
+      ( 
+           trim(:uatkl) IS NOT NULL 
+        OR trim(:uadlevel) IS NOT NULL )
+      AND "UA Job Status" LIKE 'Active%'       -- Filters out Terminated employees
+      AND "Contract Type" = '1 Primary'        -- Restricts to Primary positions only
+    ) 
+ORDER BY
+  "UA ID",
+  "Contract Type",
+  "Labor %" DESC
 ;
